@@ -87,20 +87,42 @@ io.sockets.on('connection', function (socket) {
   socket.on('upload', function (data) {
     var name = data['name'];
     files[name]['downloaded'] += data['data'].length;
+    // Add data to data buffer.
     files[name]['data'] += data['data'];
+    
     if (files[name]['downloaded'] == files[name]['fileSize'])  {
-      // File is Fully Uploaded.
-      fs.write(files[name]['handler'], files[name]['data'], null, 'binary', function(err, writen) {
-        // Get Thumbnail here.
+      // File is fully uploaded.
+      fs.write(files[name]['handler'], files[name]['data'], null, 'binary', function(err, written) {
+        var input = fs.createReadStream("temp/" + name);
+        var output = fs.createWriteStream("files/" + name);
+        util.pump(input, output, function(){
+          // Delete temp media file.
+          fs.unlink("temp/" + name, function () { 
+            // Move file completed.  Can now generate thumbnail.
+            exec("ffmpeg -i files/" + name  + " -ss 01:30 -r 1 -an -vframes 1 -f mjpeg files/" + name  + ".jpg", function(err) {
+              if (err) {
+                console.log('Error creating thumbnail: ' + err.message);
+              }
+              else {
+                console.log('Video thumbnail created.');
+                // Send upload completed response to client.
+                socket.emit('done', {'image' : 'files/' + name + '.jpg'});
+              }
+           });
+          });
+        });
       });
     }
     else if (files[name]['data'].length > 10485760) { 
-      // Data Buffer has reached 10MB.
-      fs.write(files[name]['handler'], files[name]['data'], null, 'binary', function(err, writen) {
+      // Data Buffer is full (has reached 10MB).
+      fs.write(files[name]['handler'], files[name]['data'], null, 'binary', function(err, written) {
         //Reset The Buffer
         files[name]['data'] = ""; 
+        // Get current upload position.
         var place = files[name]['downloaded'] / 524288;
+        // Get current percentage upload completed.
         var percent = (files[name]['downloaded'] / files[name]['fileSize']) * 100;
+        // Send request to client for more file data.
         socket.emit('moreData', { 
           'place': place, 
           'percent':  percent 
@@ -108,8 +130,12 @@ io.sockets.on('connection', function (socket) {
       });
     }
     else {
+      // Data buffer is not full.
+      // Get current upload position.
       var place = files[name]['downloaded'] / 524288;
+      // Get current percentage upload completed.
       var percent = (files[name]['downloaded'] / files[name]['fileSize']) * 100;
+      // Send request to client for more file data.
       socket.emit('moreData', { 
         'place': place, 
         'percent': percent
