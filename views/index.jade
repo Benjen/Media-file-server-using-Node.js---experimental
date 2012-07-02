@@ -1,2 +1,18 @@
 h1= title
 p Welcome to #{title}
+upload-wrapper
+  h2 Upload file
+    span(id="upload-area")
+      div
+       label(for="name") Name
+       input(id="name", type="text", name="name")
+      div
+        label(for="tags") Tags
+        input(id="tags", type="text", name="tags")
+      div
+        label(for="file-box") Select a file
+        input(id="file-box", type="file")
+      div
+        label() 
+        button(type="button", id="upload-file-button", class="button") Upload file
+content
