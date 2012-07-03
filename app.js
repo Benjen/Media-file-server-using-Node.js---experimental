@@ -61,6 +61,31 @@ io.sockets.on('connection', function (socket) {
   // passed through from the html file.
   socket.on('start', function (data) { 
     var name = data['name'];
+    var size = data['size'];
+    // Check if file already exists.
+    var Movie = mongoose.model('Movie');
+    Movie
+      .where({ originalFileName: name, size: size })
+      .exec(function(err, results) {
+        console.log('********');
+        console.log(results);
+        if (results.length === 0) {
+          // Create new database record.
+          var date = new Date();
+          var fileName = date.getTime();var movie = new app.Movie({
+            name: data['name'],
+            machineFileName: fileName,
+            originalFileName: name,
+            size: data['size']
+          });
+          movie.save(function(error, data) {});
+          console.log(movie);
+        }
+        else {
+          // Use existing record.
+        }
+      });
+    
     //Create a new Entry in The Files Variable.
     files[name] = {  
       fileSize: data['size'],

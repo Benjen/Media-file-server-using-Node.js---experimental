@@ -10,7 +10,7 @@ function defineModels(mongoose, fn) {
    * Model - User
    */
   User = new Schema({
-    'uid': Number,
+    'uid': ObjectId,
     'name': String
   }, { strict: true });
   
@@ -20,12 +20,16 @@ function defineModels(mongoose, fn) {
    * Model - Movie
    */
   Movie = new Schema({
-    'mid': String,
+    'mid': ObjectId,
     'name': String,
+    'machineFileName': String,
+    'originalFileName': String,
+    'size': Number,
     'type': String,
     'dataUploaded': Date,
+    'amountUploaded': { type: Number, default: 0 },
     'viewed': Number,
-    'uid': Number,
+    'uid': String,
     'flags': [],
     'tags': []
   }, { strict: true });
