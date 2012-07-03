@@ -9,6 +9,8 @@ var express = require('express')
   , files = {} // Holds info on files currently being uploaded.
   , fs = require('fs')
   , exec = require('child_process').exec
+  , models = require('./models')
+  , mongoose = require('mongoose')
   , util = require('util');
 
 var app = module.exports = express.createServer();
@@ -28,10 +30,21 @@ app.configure(function(){
 
 app.configure('development', function(){
   app.use(express.errorHandler({ dumpExceptions: true, showStack: true }));
+  app.set('db-uri', 'mongodb://localhost/media-server');
 });
 
 app.configure('production', function(){
   app.use(express.errorHandler());
+});
+
+/*
+ * Database models
+ */ 
+
+models.defineModels(mongoose, function() {
+  app.User = User = mongoose.model('User');
+  app.Movie = Movie = mongoose.model('Movie');
+  db = mongoose.connect(app.set('db-uri'));
 });
 
 /*
@@ -41,11 +54,11 @@ app.configure('production', function(){
 // Initialize socket.io.
 io = require('socket.io').listen(app);
 
-// Set on connection event.
+// Set io connection events.
 io.sockets.on('connection', function (socket) {
   
-  // Start uploading process
-  //   @param data contains the variables passed through from the html file.
+  // Start uploading process. @param data contains the variables 
+  // passed through from the html file.
   socket.on('start', function (data) { 
     var name = data['name'];
     //Create a new Entry in The Files Variable.
@@ -56,7 +69,7 @@ io.sockets.on('connection', function (socket) {
     };
     var place = 0;
     try {
-      // Is the file already present on server.
+      // Check if file is already present on server.
       var stat = fs.statSync('temp/' +  name);
       if (stat.isFile()) {
         // Update file information with size of already uploaded portion of file.
@@ -84,6 +97,7 @@ io.sockets.on('connection', function (socket) {
     });
   });
   
+  // Upload
   socket.on('upload', function (data) {
     var name = data['name'];
     files[name]['downloaded'] += data['data'].length;
