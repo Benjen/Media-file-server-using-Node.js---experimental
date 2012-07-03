@@ -1,4 +1,10 @@
 window.addEventListener("load", ready);
+
+// Store settings for static file server.
+var staticFileServer = {
+  host: 'media',
+  port: 8080
+};
  
 function ready() {
   if(window.File && window.FileReader){ //These are the relevant HTML5 objects that we are going to use
@@ -92,7 +98,8 @@ function updateBar(percent){
 socket.on('done', function(data) {
   // Display upload completed content.
   var content = '<h3>Upload complete</h3>';
-  content += '<div><img src="http://localhost/' + data['image'] + '"/></div>';
+  // 
+  content += '<div><img src="http://' + staticFileServer.host + ':' + staticFileServer.port + '/' + data['image'] + '"/></div>';
   content += '<div><button type="button" id="upload-another-button">Upload another movie</button></div>';
   document.getElementById('upload-area').innerHTML = content;
   document.getElementById('upload-another-button').addEventListener('click', function() {

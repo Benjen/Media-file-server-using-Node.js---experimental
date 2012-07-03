@@ -94,12 +94,12 @@ io.sockets.on('connection', function (socket) {
       // File is fully uploaded.
       fs.write(files[name]['handler'], files[name]['data'], null, 'binary', function(err, written) {
         var input = fs.createReadStream("temp/" + name);
-        var output = fs.createWriteStream("files/" + name);
+        var output = fs.createWriteStream("static/files/" + name);
         util.pump(input, output, function(){
           // Delete temp media file.
           fs.unlink("temp/" + name, function () { 
             // Move file completed.  Can now generate thumbnail.
-            exec("ffmpeg -i files/" + name  + " -ss 01:30 -r 1 -an -vframes 1 -f mjpeg files/" + name  + ".jpg", function(err) {
+            exec("ffmpeg -i static/files/" + name  + " -ss 01:30 -r 1 -an -vframes 1 -f mjpeg static/files/" + name  + ".jpg", function(err) {
               if (err) {
                 console.log('Error creating thumbnail: ' + err.message);
               }
