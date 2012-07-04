@@ -26,7 +26,7 @@ function defineModels(mongoose, fn) {
     'originalFileName': String,
     'size': Number,
     'type': String,
-    'dataUploaded': Date,
+    'dateUploaded': Date,
     'amountUploaded': { type: Number, default: 0 },
     'viewed': Number,
     'uid': String,
