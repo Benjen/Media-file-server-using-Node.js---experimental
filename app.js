@@ -11,6 +11,7 @@ var async = require('async')
   , fs = require('fs')
   , models = require('./models')
   , mongoose = require('mongoose')
+  , Step = require('step')
   , exec = require('child_process').exec
   , util = require('util');
 
@@ -69,7 +70,7 @@ function MovieFile(mongoose) {
   this.machineFileName;
 //  this.Movie = mongoose.model('Movie');
   this.originalFileName;
-  this.exists = function(fn) {
+  this.exists = function(next) {
     // Confirm necessary object variables have been set.
     if (typeof this.originalFileName === 'undefined') {
       throw error = new Error('Variable originalFilename has not been set for MovieFile.');
@@ -81,17 +82,42 @@ function MovieFile(mongoose) {
     Movie
       .find({ originalFileName: this.originalFileName, size: this.fileSize })
       .exec(function(error, results) {
+        console.log(results);
+//        error = new Error('Opps something went wrong.');
         if (error) {
-          throw error;
+          if (typeof next === 'function') {
+            next(error, undefined);
+          }
+          else {
+            throw error;
+          }
         }
-        if (results.length === 0) {
-          return false;
+        else if (results.length === 0) {
+          console.log('File doesn\'t exist');
+          if (typeof next === 'function') {
+            next(null, false);
+          }
+          else {
+            return false;
+          }
         }
         else if (results.length === 1) {
-          return true;
+          console.log('File does exist');
+          if (typeof next === 'function') {
+            next(null, true);
+          }
+          else {
+            return true;
+          }
         }
         else {
-          throw error = new Error('More than one record for this movie record exists.');
+          error = new Error('More than one record for this movie record exists.');
+          if (typeof next === 'function') {
+            next(error, undefined);
+          }
+          else {
+            return error;
+          }
         }
       });
   };
@@ -139,6 +165,7 @@ function MovieFile(mongoose) {
     this.originalFileName = originalFileName;
   };  
   this.save = function() {
+    console.log('save file');
     // save movie to database.
     var values = {
       name: this.getName(),
@@ -153,11 +180,9 @@ function MovieFile(mongoose) {
       flags: [],
       tags: []
     };
-//    var Movie = mongoose.model('Movie');
     var movie = new Movie(values);
     movie.save(function(error, data) {
       if (error) {
-        console.log('**** Error saving movie info to database. ****');
         console.log(error);
       }
       else {
@@ -223,15 +248,29 @@ io.sockets.on('connection', function (socket) {
     movieFile.setFileSize(size);
     movieFile.setData('');
     movieFile.setDownloaded(0);
-    if (movieFile.exists() === true) {
-      // Fetch existing database record.
-      console.log(movieFileExists);
-    }
-    else {
-      console.log('Database record not found.');
-      var date = new Date();
-      movieFile.setMachineFileName(date.getTime());
-    }
+    Step(
+      function() {
+        movieFile.exists(null, this);
+      },
+      function(response) {
+        console.log('*** START Exists ***');
+        console.log(exists);
+      }
+    );
+//    movieFile.exists(function(error, exists) {
+//      console.log('*** START Exists ***');
+//      console.log(exists);
+//    });
+    
+//    if (movieFile.exists() === true) {
+//      // Fetch existing database record.
+//      console.log(movieFileExists);
+//    }
+//    else {
+//      console.log('Database record not found.');
+//      var date = new Date();
+//      movieFile.setMachineFileName(date.getTime());
+//    }
     // Check if file already exists.
 //    Movie
 //      .find({ originalFileName: name, size: size })
@@ -294,9 +333,14 @@ io.sockets.on('connection', function (socket) {
       // Data Buffer is full (has reached 10MB) proceed to write buffer to file on server.
       fs.write(files[name].getHandler(), files[name].getData(), null, 'binary', function(err, written) {
         // Update file record in database.
-        if (files[name].exists() === false) {
-          files[name].save();
-        }
+        files[name].exists(function(error, exists) {
+          if (error) {
+            console.log(error);
+          }
+          else if (exists === false) {
+            files[name].save();
+          }
+        });
         
         //Reset The Buffer
         files[name].setData('');

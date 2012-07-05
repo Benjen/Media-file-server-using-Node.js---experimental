@@ -8,5 +8,6 @@
     , "socket.io": "0.9.x"
     , "mongoose": "2.7.x"
     , "async": "0.1.x"
+    , "step": "0.0.x"
   }
 }
