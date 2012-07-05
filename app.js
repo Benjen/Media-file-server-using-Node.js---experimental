@@ -85,39 +85,17 @@ function MovieFile(mongoose) {
         console.log(results);
 //        error = new Error('Opps something went wrong.');
         if (error) {
-          if (typeof next === 'function') {
-            next(error, undefined);
-          }
-          else {
-            throw error;
-          }
+          next(error, undefined);
         }
         else if (results.length === 0) {
-          console.log('File doesn\'t exist');
-          if (typeof next === 'function') {
-            next(null, false);
-          }
-          else {
-            return false;
-          }
+          next(null, false);
         }
         else if (results.length === 1) {
-          console.log('File does exist');
-          if (typeof next === 'function') {
-            next(null, true);
-          }
-          else {
-            return true;
-          }
+          next(null, true);
         }
         else {
           error = new Error('More than one record for this movie record exists.');
-          if (typeof next === 'function') {
-            next(error, undefined);
-          }
-          else {
-            return error;
-          }
+          next(error, undefined);
         }
       });
   };
