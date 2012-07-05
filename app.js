@@ -3,7 +3,8 @@
  * Module dependencies.
  */
 
-var express = require('express')
+var async = require('async')
+  , express = require('express')
   , routes = require('./routes')
   , io
   , files = {} // Holds info on files currently being uploaded.
@@ -57,14 +58,43 @@ io = require('socket.io').listen(app);
 /**
  * 
  */
-function MovieFile() {
+function MovieFile(mongoose) {
+  var Movie = mongoose.model('Movie');
+  this.id;
   this.name;
   this.data;
   this.downloaded;
   this.handler;
   this.fileSize = 0;
   this.machineFileName;
+//  this.Movie = mongoose.model('Movie');
   this.originalFileName;
+  this.exists = function(fn) {
+    // Confirm necessary object variables have been set.
+    if (typeof this.originalFileName === 'undefined') {
+      throw error = new Error('Variable originalFilename has not been set for MovieFile.');
+    }
+    if (typeof this.fileSize !== 'number') {
+      throw error = new Error('Variable originalFilename has not been set for MovieFile.');
+    }
+    // Check database for existing record.
+    Movie
+      .find({ originalFileName: this.originalFileName, size: this.fileSize })
+      .exec(function(error, results) {
+        if (error) {
+          throw error;
+        }
+        if (results.length === 0) {
+          return false;
+        }
+        else if (results.length === 1) {
+          return true;
+        }
+        else {
+          throw error = new Error('More than one record for this movie record exists.');
+        }
+      });
+  };
   this.fetch = function(name, size) {};
   this.getData = function() {
     return this.data;
@@ -112,22 +142,23 @@ function MovieFile() {
     // save movie to database.
     var values = {
       name: this.getName(),
-      machineFileName: this.getName(),
+      machineFileName: this.getMachineFileName(),
       originalFileName: this.getName(),
       size: this.getFileSize(),
       type: 'unknown',
 //      dateUploaded: Date,
-      amountUploaded: this.getDownloaded,
+      amountUploaded: this.getDownloaded(),
       viewed: 0,
       uid: 0,
       flags: [],
       tags: []
     };
-    var Movie = mongoose.model('Movie');
+//    var Movie = mongoose.model('Movie');
     var movie = new Movie(values);
     movie.save(function(error, data) {
       if (error) {
-        console.log('Error saving movie info to database.');
+        console.log('**** Error saving movie info to database. ****');
+        console.log(error);
       }
       else {
         console.log('Movie saved.');
@@ -157,18 +188,20 @@ io.sockets.on('connection', function (socket) {
         place = stat.size / 524288;
       }
     }
-    catch (er) {
+    catch (error) {
       // No file present? Must be a new upload.
       console.log('INFO - No file present, must be new file.');
     } 
-    fs.open("temp/" + name, "a", 0755, function(err, fd) {
-      if (err) {
-         console.log(err);
+    fs.open("temp/" + name, "a", 0755, function(error, fd) {
+      if (error) {
+         console.log(error);
       }
       else {
         // Store file handler so can be written to later.
 //        files[name]['handler'] = fd; 
         file.setHandler(fd);
+        // Add record of file to database.
+//        file.save();
         // Fetch file data from client. 
         socket.emit('moreData', { 
           'place': place, 
@@ -184,11 +217,21 @@ io.sockets.on('connection', function (socket) {
     var name = data['name'];
     var size = data['size'];
     // Create instance of MovieFile object.  
-    var movieFile = new MovieFile();
+    var movieFile = new MovieFile(mongoose);
     movieFile.setName(name);
+    movieFile.setOriginalFileName(name);
     movieFile.setFileSize(size);
     movieFile.setData('');
     movieFile.setDownloaded(0);
+    if (movieFile.exists() === true) {
+      // Fetch existing database record.
+      console.log(movieFileExists);
+    }
+    else {
+      console.log('Database record not found.');
+      var date = new Date();
+      movieFile.setMachineFileName(date.getTime());
+    }
     // Check if file already exists.
 //    Movie
 //      .find({ originalFileName: name, size: size })
@@ -251,7 +294,10 @@ io.sockets.on('connection', function (socket) {
       // Data Buffer is full (has reached 10MB) proceed to write buffer to file on server.
       fs.write(files[name].getHandler(), files[name].getData(), null, 'binary', function(err, written) {
         // Update file record in database.
-        files[name].save();
+        if (files[name].exists() === false) {
+          files[name].save();
+        }
+        
         //Reset The Buffer
         files[name].setData('');
         // Get current upload position.
