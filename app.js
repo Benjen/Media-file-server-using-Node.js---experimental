@@ -13,7 +13,8 @@ var async = require('async')
   , mongoose = require('mongoose')
   , Step = require('step')
   , exec = require('child_process').exec
-  , util = require('util');
+  , util = require('util')
+  , _ = require('underscore');
 
 var app = module.exports = express.createServer();
 
@@ -70,6 +71,19 @@ function MovieFile(mongoose) {
   this.machineFileName;
 //  this.Movie = mongoose.model('Movie');
   this.originalFileName;
+  
+  /**
+   * Check if record for this movie file exists in the database.
+   * 
+   * Record is check based on file name and file size. 
+   * 
+   * @param function Next
+   *   function called on completion of this method.
+   * @return
+   *   error - Error object
+   *   exists - Boolean denoting is record for this file exists in database.
+   *   record - Object containing database record. Only returned if record exists is true. 
+   */
   this.exists = function(next) {
     // Confirm necessary object variables have been set.
     if (typeof this.originalFileName === 'undefined') {
@@ -82,7 +96,6 @@ function MovieFile(mongoose) {
     Movie
       .find({ originalFileName: this.originalFileName, size: this.fileSize })
       .exec(function(error, results) {
-        console.log(results);
 //        error = new Error('Opps something went wrong.');
         if (error) {
           next(error, undefined);
@@ -91,7 +104,8 @@ function MovieFile(mongoose) {
           next(null, false);
         }
         else if (results.length === 1) {
-          next(null, true);
+          // If contains a record then return that record along with true.
+          next(null, true, results[0]);
         }
         else {
           error = new Error('More than one record for this movie record exists.');
@@ -99,13 +113,17 @@ function MovieFile(mongoose) {
         }
       });
   };
+
   this.fetch = function(name, size) {};
+  
   this.getData = function() {
     return this.data;
   };
+  
   this.setData = function(data) {
     this.data = data;
   };
+  
   this.getDownloaded = function() {
     return this.downloaded;
   };
@@ -123,6 +141,11 @@ function MovieFile(mongoose) {
   };
   this.setHandler = function(handler) {
     this.handler = handler;
+  };
+  this.createNewMachineFileName = function() {
+    var date = new Date();
+    this.machineFileName = date.getTime();
+    return this.machineFileName;
   };
   this.getMachineFileName = function() {
     return this.machineFileName;
@@ -142,6 +165,7 @@ function MovieFile(mongoose) {
   this.setOriginalFileName = function(originalFileName) {
     this.originalFileName = originalFileName;
   };  
+  
   this.save = function() {
     console.log('save file');
     // save movie to database.
@@ -173,16 +197,62 @@ function MovieFile(mongoose) {
   };
 };
 
+/**
+ * Prototype function - Retrieve machine file name from database.
+ * 
+ * Database is searched based on file name and file size.
+ * 
+ * @param String name of file
+ * @param Number size of file
+ * @param Function callback function to call on completion of this function.
+ * 
+ * @returns
+ *   returns error and machine filename to the callback function. If file 
+ *   cannot be found the value of filename passed to the callback will be false.
+ */
+MovieFile.prototype.retrieveMachineFileName = function(filename, filesize, next) {
+  // Confirm necessary object variables have been set.
+  if (typeof filename !== 'string') {
+    throw error = new Error('Valid method argument filename not provided.');
+  }
+  if (typeof this.fileSize !== 'number') {
+    throw error = new Error('Valid method argument filesize not provided.');
+  }
+  // Check database for existing record.
+  Movie
+    .find({ originalFileName: filename, size: filesize })
+    .exec(function(error, results) {
+//      error = new Error('Opps something went wrong.');
+      if (error) {
+        next(error, undefined);
+      }
+      else if (results.length === 0) {
+        var error = new Error('No record for this file exists in the database.');
+        next(null, false);
+      }
+      else if (results.length === 1) {
+        // If contains a record then return that record along with true.
+        next(null, results[0].machineFileName);
+      }
+      else {
+        error = new Error('More than one record for this file exists in database.');
+        next(error, undefined);
+      }
+    });
+};
+
+
+
 // Set on connection event.
 io.sockets.on('connection', function (socket) {
   var Movie = mongoose.model('Movie');
   
   var prepareToUpload = function(file) {
-    var name = file.getName();
+    var machineName = file.getMachineFileName();
     var place = 0;
     try {
       // Is the file already present on server.
-      var stat = fs.statSync('temp/' +  name);
+      var stat = fs.statSync('temp/' +  machineName);
       if (stat.isFile()) {
         // Update file information with size of already uploaded portion of file.
 //        files[name]['downloaded'] = stat.size;
@@ -195,7 +265,7 @@ io.sockets.on('connection', function (socket) {
       // No file present? Must be a new upload.
       console.log('INFO - No file present, must be new file.');
     } 
-    fs.open("temp/" + name, "a", 0755, function(error, fd) {
+    fs.open("temp/" + machineName, "a", 0755, function(error, fd) {
       if (error) {
          console.log(error);
       }
@@ -217,8 +287,8 @@ io.sockets.on('connection', function (socket) {
   // Start uploading process
   //   @param data contains the variables passed through from the html file.
   socket.on('start', function (data) { 
-    var name = data['name'];
-    var size = data['size'];
+    var name = data.name;
+    var size = data.fileSize;
     // Create instance of MovieFile object.  
     var movieFile = new MovieFile(mongoose);
     movieFile.setName(name);
@@ -226,106 +296,89 @@ io.sockets.on('connection', function (socket) {
     movieFile.setFileSize(size);
     movieFile.setData('');
     movieFile.setDownloaded(0);
-    Step(
-      function() {
-        movieFile.exists(null, this);
-      },
-      function(response) {
-        console.log('*** START Exists ***');
-        console.log(exists);
+    // Get the machine name for the file.
+    movieFile.exists(function(err, exists, record) {
+      if (exists === true && record !== 'undefined') {
+        // Is an existing file so get its machine name.
+        movieFile.setMachineFileName(record.machineFileName);
       }
-    );
-//    movieFile.exists(function(error, exists) {
-//      console.log('*** START Exists ***');
-//      console.log(exists);
-//    });
-    
-//    if (movieFile.exists() === true) {
-//      // Fetch existing database record.
-//      console.log(movieFileExists);
-//    }
-//    else {
-//      console.log('Database record not found.');
-//      var date = new Date();
-//      movieFile.setMachineFileName(date.getTime());
-//    }
-    // Check if file already exists.
-//    Movie
-//      .find({ originalFileName: name, size: size })
-//      .exec(function(error, results) {
-//        if (results.length === 0) {
-//          // Movie does not exist. 
-//          movieFile.setName(name);
-//          movieFile.setFileSize(size);
-//          movieFile.setData('');
-//          movieFile.setDownloaded(0);
-//        }
-//        else {
-//          // Movie exists.  Update based on values stored in database.
-//          movieFile.setName(results[0].name);
-//          movieFile.setFileSize(results[0].size);
-//          movieFile.setData('');
-//          movieFile.setDownloaded(0);
-//        }
-//      });
-    //Create a new Entry in The Files Variable.
-    files[name] = movieFile;
-//    files[name] = {  
-//      fileSize: data['size'],
-//      data: '',
-//      downloaded: 0
-//    };
-    prepareToUpload(files[name]);
+      else {
+        // Is a new file so give it a machine name.
+        movieFile.createNewMachineFileName();
+        movieFile.save();
+      }
+      //Create a new Entry in The Files Variable.
+      var machineName = movieFile.getMachineFileName();
+      files[machineName] = movieFile;
+      prepareToUpload(files[machineName]);
+      console.log(machineName);
+    });
   });
   
   socket.on('upload', function (data) {
-    var name = data['name'];
-    files[name].setDownloaded(files[name].getDownloaded() + data['data'].length);
-    // Add data to data buffer.
-    files[name].setData(files[name].getData() + data['data']);
+    console.info('*** Upload ***');
+    // Get machine name of file.
+    var machineName;
+//    var movieFile = new MovieFile(mongoose.model('Movie'));
     
-    if (files[name].getDownloaded() == files[name].getFileSize())  {
+    var file = _.find(files, function(file) {
+      console.log(data.fileSize);
+      console.log(data.name);
+      if (file.originalFileName === data.name && file.fileSize === data.fileSize) {
+        return true;
+      }
+    });
+    machineName = file.machineFileName;
+
+    files[machineName].setDownloaded(files[machineName].getDownloaded() + data['data'].length);
+    // Add data to data buffer.
+    files[machineName].setData(files[machineName].getData() + data['data']);
+    
+    if (files[machineName].getDownloaded() == files[machineName].getFileSize())  {
       // File is fully uploaded.
-      fs.write(files[name].getHandler(), files[name].getData(), null, 'binary', function(err, written) {
-        var input = fs.createReadStream("temp/" + name);
-        var output = fs.createWriteStream("static/files/" + name);
-        util.pump(input, output, function(){
+      fs.write(files[machineName].getHandler(), files[machineName].getData(), null, 'binary', function(err, written) {
+        var input = fs.createReadStream("temp/" + machineName);
+        var output = fs.createWriteStream("static/files/" + machineName);
+        util.pump(input, output, function() {
           // Delete temp media file.
-          fs.unlink("temp/" + name, function () { 
+          fs.unlink("temp/" + machineName, function () { 
             // Move file completed.  Can now generate thumbnail.
-            exec("ffmpeg -i static/files/" + name  + " -ss 01:30 -r 1 -an -vframes 1 -f mjpeg static/files/" + name  + ".jpg", function(err) {
+            exec("ffmpeg -i static/files/" + machineName  + " -ss 01:30 -r 1 -an -vframes 1 -f mjpeg static/files/" + machineName  + ".jpg", function(err) {
               if (err) {
                 console.log('Error creating thumbnail: ' + err.message);
               }
               else {
                 console.log('Video thumbnail created.');
                 // Send upload completed response to client.
-                socket.emit('done', {'image' : 'files/' + name + '.jpg'});
+                socket.emit('done', {'image' : 'files/' + machineName + '.jpg'});
               }
            });
           });
         });
       });
     }
-    else if (files[name].getData().length > 10485760) { 
+    else if (files[machineName].getData().length > 10485760) { 
       // Data Buffer is full (has reached 10MB) proceed to write buffer to file on server.
-      fs.write(files[name].getHandler(), files[name].getData(), null, 'binary', function(err, written) {
+      fs.write(files[machineName].getHandler(), files[machineName].getData(), null, 'binary', function(err, written) {
         // Update file record in database.
-        files[name].exists(function(error, exists) {
+        files[machineName].exists(function(error, exists) {
           if (error) {
             console.log(error);
           }
           else if (exists === false) {
-            files[name].save();
+            files[machineName].save();
           }
+//          else if (exists === true) {
+//            files[machineName].update();
+//          }
         });
         
         //Reset The Buffer
-        files[name].setData('');
+        files[machineName].setData('');
         // Get current upload position.
-        var place = files[name].getDownloaded() / 524288;
+        var place = files[machineName].getDownloaded() / 524288;
         // Get current percentage upload completed.
-        var percent = (files[name].getDownloaded() / files[name].getFileSize()) * 100;
+        var percent = (files[machineName].getDownloaded() / files[machineName].getFileSize()) * 100;
         // Send request to client for more file data.
         socket.emit('moreData', { 
           'place': place, 
@@ -336,9 +389,9 @@ io.sockets.on('connection', function (socket) {
     else {
       // Data buffer is not full. Get next packet of data from client.
       // Get current upload position.
-      var place = files[name].getDownloaded() / 524288;
+      var place = files[machineName].getDownloaded() / 524288;
       // Get current percentage upload completed.
-      var percent = (files[name].getDownloaded() / files[name].getFileSize()) * 100;
+      var percent = (files[machineName].getDownloaded() / files[machineName].getFileSize()) * 100;
       // Send request to client for more file data.
       socket.emit('moreData', { 
         'place': place, 

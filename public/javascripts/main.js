@@ -21,7 +21,6 @@ function ready() {
  */
 var selectedFile;
 function fileChosen(event) {
-  console.log('fileChosen');
   selectedFile = event.target.files[0];
   // Add name of chosen file to form.
   document.getElementById('name').value = selectedFile.name;
@@ -48,15 +47,17 @@ function startUpload() {
     // The onload event is automatically called each time FileReader complete a 
     // file read. See https://developer.mozilla.org/en/DOM/FileReader   
     fReader.onload = function(event) {
+      console.info(event);
       socket.emit('upload', { 
-        'name': name, 
+        'name': name,
+        'fileSize': selectedFile.size,
         data: event.target.result 
       });
     };
     // Create socket start event.
     socket.emit('start', { 
       'name': name, 
-      'size': selectedFile.size 
+      'fileSize': selectedFile.size 
     });
   }
   else {
