@@ -20,12 +20,12 @@ function defineModels(mongoose, fn) {
    * Model - Movie
    */
   Movie = new Schema({
-    'mid': ObjectId,
     'name': String,
     'machineFileName': String,
     'originalFileName': String,
     'size': Number,
     'type': String,
+    'permanent': { type: Boolean, default: false},
     'dateUploaded': Date,
     'amountUploaded': { type: Number, default: 0 },
     'viewed': Number,
