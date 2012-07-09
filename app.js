@@ -73,9 +73,7 @@ function MovieFile(mongoose) {
   this.originalFileName;
   this.permanent = false;
  
-  this.createThumbnail = function() {};
-  
-  /**
+   /**
    * Check if record for this movie file exists in the database.
    * 
    * Record is check based on file name and file size. 
@@ -297,6 +295,49 @@ MovieFile.prototype.retrieveMachineFileName = function(filename, filesize, next)
     });
 };
 
+/**
+ * @param Object options
+ *   x - x dimension in pixels.
+ *   y - y dimension in pixels.
+ *   path - path to which thumbnail should be saved.
+ *   
+ * @param Function next
+ *   Function to call on completion of this function.
+ */
+MovieFile.prototype.createThumbnail = function(options, next) {
+  // Validate arguments.
+  if (typeof options.x === 'undefined' && options.y === 'undefined') {
+    var error = new Error('Must include at least an X or Y dimension for the thumbnail to be generated.');
+    next(error, false);
+  }
+  if (typeof options.path !== 'string') {
+    var error = new Error('Must provide a path to which to save the created thumbnail.');
+    next(error, false);
+  }
+  if (typeof this.getMachineFileName() !== 'string') {
+    var error = new Error('Cannot create thumb as this file does not have a vaild machine name.');
+    next(error, false);
+  }
+  
+  // Create thumbnail.
+  var machineName = this.getMachineFileName();
+  var thumbName = machineName + '.jpg';
+  var xDimension;
+  var yDimension;
+  // Get aspect ratio of movie.
+  
+  // Set dimensions of thumb.
+  exec("ffmpeg -i " + options.path + "/" + machineName  + " -ss 02:30 -r 1 -an -vframes 1 -f mjpeg " + options.path + "/" + thumbName, function(error) {
+    if (error) {
+      next(error, false);
+    }
+    else {
+      // Send upload completed response to client.
+      next(null, thumbName);
+    }
+ });
+};
+
 
 
 // Set on connection event.
@@ -421,17 +462,22 @@ io.sockets.on('connection', function (socket) {
               }
               console.log('Record successfully updated.');
             });
-            // Move file completed.  Can now generate thumbnail.
-            exec("ffmpeg -i static/files/" + machineName  + " -ss 01:30 -r 1 -an -vframes 1 -f mjpeg static/files/" + machineName  + ".jpg", function(err) {
-              if (err) {
-                console.log('Error creating thumbnail: ' + err.message);
+            // Create thumbnails.
+            var options = {
+              path: '/static/files',
+              x: 400,
+              y: 300
+            };
+            files[machineName].createThumbnail(options, function(error, thumbName) {
+              if (error) {
+                throw error;
               }
               else {
-                console.log('Video thumbnail created.');
-                // Send upload completed response to client.
-                socket.emit('done', {'image' : 'files/' + machineName + '.jpg'});
+             // Move file completed.  Can now generate thumbnail.
+                socket.emit('done', {'image' : 'files/' + thumbName});
               }
-           });
+            });
+            
           });
         });
       });
