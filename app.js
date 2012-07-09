@@ -66,6 +66,7 @@ function MovieFile(mongoose) {
   this.id;
   this.name;
   this.data;
+  this.dateUploaded;
   this.downloaded;
   this.handler;
   this.fileSize = 0;
@@ -126,6 +127,14 @@ function MovieFile(mongoose) {
     this.data = data;
   };
   
+  this.getDateUploaded = function() {
+    return this.dateUploaded;
+  };
+  
+  this.setDateUploaded = function(date) {
+    this.dateUploaded = date;
+  };
+
   this.getAmountUploaded = function() {
     return this.downloaded;
   };
@@ -184,72 +193,80 @@ function MovieFile(mongoose) {
     }
     this.permanent = value;
   };
+};
+
+/**
+ * Create thumbnail for movie file
+ * 
+ * @param Object options
+ *   options.dimensions - String denoting dimensions of the thumbnail. 
+ *   Example of dimension options include: 320x? - Fixed width, 
+ *   calculate height; ?x240 - Fixed height, calculate width; 50% - 
+ *   percental resizing; 320x240 - fixed size (plain ffmpeg way).
+ *
+ *   path - String denoting path to which thumbnail should be saved.
+ *   
+ * @param Function next
+ *   Function to call on completion of this function.
+ */
+MovieFile.prototype.createThumbnail = function(options, next) {
+  // Validate arguments.
+  if (typeof options.dimensions === 'undefined') {
+    var error = new Error('Must include dimensions for the thumbnail to be generated.');
+    next(error, false);
+  }
+  if (typeof options.path !== 'string') {
+    var error = new Error('Must provide a path to which to save the created thumbnail.');
+    next(error, false);
+  }
+  if (typeof this.getMachineFileName() === 'undefined') {
+    var error = new Error('Cannot create thumb as this file does not have a vaild machine name.');
+    next(error, false);
+  }
   
-  this.save = function() {
-    console.log('save file');
-    // save movie to database.
-    var values = {
-      name: this.getName(),
-      machineFileName: this.getMachineFileName(),
-      originalFileName: this.getName(),
-      size: this.getFileSize(),
-      type: 'unknown',
-//      dateUploaded: Date,
-      amountUploaded: this.getAmountUploaded(),
-      permanent: this.getPermanent(),
-      viewed: 0,
-      uid: 0,
-      flags: [],
-      tags: []
-    };
-    var movie = new Movie(values);
-    movie.save(function(error, data) {
-      if (error) {
-        console.log(error);
+  // Create thumbnail.
+  var machineName = this.getMachineFileName();
+  // Remove any leading and trailing forward slashes from path.
+  var path = options.path.replace(/^\/|\/$/g, '');
+  var dimensions = options.dimensions;
+  
+  // Set dimensions of thumb.
+  var proc = new ffmpeg({ source: path + "/" + machineName, nolog: true })
+    .withSize(dimensions)
+    .takeScreenshots({ 
+        count: 1, 
+        timemarks: [ '30' ],
+        filename: machineName + '_%r'
+      }, 
+      path, 
+      function(err, files) {
+        // Send response to callback function.
+        console.log(files);
+        next(err, files);
+      });
+};
+
+/**
+ * Remove movie file from server and database
+ */
+MovieFile.prototype.remove = function(next) {
+  if (typeof this.getId() === 'undefined') {
+    var error = new Error('MovieFile.id has not been set for this object.');
+    next(error);
+  }
+  // Remove file from server.
+  fs.unlink(file, function(err, result) {
+    // Remove file record from database.
+    Movie.remove({ _id: id }, function(err, result) {
+      if (err) {
+        next(err);
       }
       else {
-        console.log('Movie saved.');
+        console.log('File record removed from database.');
+        next(null, result);
       }
     });
-  };
-  this.refresh = function() {
-    // Refresh movie with values from database.
-  };
-  
-  this.update = function(next) {
-    if (typeof this.id === 'undefined') {
-      var error = new Error('Cannot complete MovieFile.updage as MovieFile.id is not defined.');
-      next(error, undefined);
-    }
-    else {
-      var values = {
-//          _id: this.getId(),
-          name: this.getName(),
-          machineFileName: this.getMachineFileName(),
-          originalFileName: this.getName(),
-          size: this.getFileSize(),
-          type: 'unknown',
-//          dateUploaded: Date,
-          amountUploaded: this.getAmountUploaded(),
-          permanent: this.getPermanent(),
-          viewed: 0,
-          uid: 0,
-          flags: [],
-          tags: []
-        };
-//        var movie = new Movie(values);
-        var conditions = { _id: this.id };
-        var options = {};
-        Movie.update(conditions, values, options, function(error, data) {
-          if (error) {
-            console.log(error);
-          }
-          else {
-            next(null, data);
-          }
-        });
-    }
-  };
+  });
 };
 
 /**
@@ -297,92 +314,83 @@ MovieFile.prototype.retrieveMachineFileName = function(filename, filesize, next)
 };
 
 /**
- * @param Object options
- *   x - x dimension in pixels.
- *   y - y dimension in pixels.
- *   path - path to which thumbnail should be saved.
- *   
- * @param Function next
- *   Function to call on completion of this function.
+ * Save record of movie file to database
  */
-MovieFile.prototype.createThumbnail = function(options, next) {
-  console.log(this.getMachineFileName());
-  // Validate arguments.
-  if (typeof options.dimensions === 'undefined') {
-    var error = new Error('Must include dimensions for the thumbnail to be generated.');
-    next(error, false);
-  }
-  if (typeof options.path !== 'string') {
-    var error = new Error('Must provide a path to which to save the created thumbnail.');
-    next(error, false);
-  }
-  if (typeof this.getMachineFileName() !== 'number') {
-    var error = new Error('Cannot create thumb as this file does not have a vaild machine name.');
-    next(error, false);
-  }
-  
-  
-  // Create thumbnail.
-  var machineName = this.getMachineFileName();
-  // Remove any leading and trailing forward slashes from path.
-  var path = options.path.replace(/^\/|\/$/g, '');
-//  var originalXDimension;
-//  var originalYDimension;
-//  var thumbXDimension;
-//  var thumbYDimension;
-//  var aspectRatio;
-  
-//  // Calculate original file dimensions and aspect ratio.
-//  Step(
-//    function getMovieFileDimensions() {
-//      exec("ffmpeg -i " + path + "/" + machineName, this);
-//    },
-//    function setAspectRatio(err, results) {
-//      console.log(results);
-//      var regex = /([0-9]{1,4})x([0-9]{1,4})/;
-//      var regexMatches = results.match(regex);
-//      console.log(regexMatches);
-//      var dimensionsString = regexMatches[0].split(/x/i);
-//      originalXDimension = Number(dimensionsString[0]);
-//      originalYDimension = Number(dimensionsString[1]);
-//      aspectRatio = originalXDimension / originalYDimension; 
-//      console.log(aspectRatio);
-//    }
-//  );
-  
-//  var thumbName = machineName + '_' + thumbXDimension + 'x' + thumbYDimension + '.jpg';
-  var dimensions = options.dimensions;
-  
-  // Set dimensions of thumb.
-  var proc = new ffmpeg({ source: path + "/" + machineName, nolog: true })
-//  .withSize('150x100')
-//  // take 2 screenshots at predefined timemarks
-//  .takeScreenshots({ count: 1, timemarks: [ '00:00:02.000', '6' ] }, path, function(err) {
-//    console.log('screenshots were saved');
-//  });
-    .withSize(dimensions)
-    .takeScreenshots({ 
-        count: 1, 
-        timemarks: [ '00:00:02.000' ]
-      }, 
-      path, 
-      function(err, files) {
-//        if (err) {
-//          next(err, false);
-//        }
-//        else {
-          // Send upload completed response to client.
-          next(null, files);
-//        }
-      });
+MovieFile.prototype.save = function(next) {
+  console.log('save file');
+  // save movie to database.
+  var values = {
+    name: this.getName(),
+    machineFileName: this.getMachineFileName(),
+    originalFileName: this.getName(),
+    size: this.getFileSize(),
+    type: 'unknown',
+    dateUploaded: this.getDateUploaded(),
+    amountUploaded: this.getAmountUploaded(),
+    permanent: this.getPermanent(),
+    viewed: 0,
+    uid: 0,
+    flags: [],
+    tags: []
+  };
+  var movie = new Movie(values);
+  movie.save(function(err, data) {
+    if (err) {
+      next(err);
+    }
+    else {
+      console.log(typeof next);
+      next(null, data);
+    }
+  });
 };
 
 
 
+/**
+ * Update database record for this movie file
+ * 
+ * @param next
+ *   Function to call after completing this operation.
+ */
+MovieFile.prototype.update = function(next) {
+  if (typeof this.id === 'undefined') {
+    var error = new Error('Cannot complete MovieFile.updage as MovieFile.id is not defined.');
+    next(error, undefined);
+  }
+  else {
+    var conditions = { _id: this.id };
+    var values = {
+//        _id: this.getId(),
+        name: this.getName(),
+        machineFileName: this.getMachineFileName(),
+        originalFileName: this.getName(),
+        size: this.getFileSize(),
+        type: 'unknown',
+        dateUploaded: this.getDateUploaded(),
+        amountUploaded: this.getAmountUploaded(),
+        permanent: this.getPermanent(),
+        viewed: 0,
+        uid: 0,
+        flags: [],
+        tags: []
+      };
+      var options = {};
+      Movie.update(conditions, values, options, function(err, data) {
+        if (err) {
+          next(err, data);
+        }
+        else {
+          next(null, data);
+        }
+      });
+  }
+};
+
 // Set on connection event.
 io.sockets.on('connection', function (socket) {
-  var Movie = mongoose.model('Movie');
   
+  // 
   var prepareToUpload = function(file) {
     var machineName = file.getMachineFileName();
     var place = 0;
@@ -391,7 +399,6 @@ io.sockets.on('connection', function (socket) {
       var stat = fs.statSync('temp/' +  machineName);
       if (stat.isFile()) {
         // Update file information with size of already uploaded portion of file.
-//        files[name]['downloaded'] = stat.size;
         file.setAmountUploaded(stat.size);
         // Set starting place for continuation of uploading.
         place = stat.size / 524288;
@@ -399,7 +406,7 @@ io.sockets.on('connection', function (socket) {
     }
     catch (error) {
       // No file present? Must be a new upload.
-      console.log('INFO - No file present, must be new file.');
+      console.info('No file present, must be new file.');
     } 
     fs.open("temp/" + machineName, "a", 0755, function(error, fd) {
       if (error) {
@@ -407,10 +414,7 @@ io.sockets.on('connection', function (socket) {
       }
       else {
         // Store file handler so can be written to later.
-//        files[name]['handler'] = fd; 
         file.setHandler(fd);
-        // Add record of file to database.
-//        file.save();
         // Fetch file data from client. 
         socket.emit('moreData', { 
           'place': place, 
@@ -443,6 +447,11 @@ io.sockets.on('connection', function (socket) {
       else {
         // Is a new file so give it a machine name.
         movieFile.createNewMachineFileName();
+        movieFile.save(function(err, data) {
+          if (err) {
+            throw error;
+          }
+        });
       }
       //Create a new Entry in The Files Variable.
       var machineName = movieFile.getMachineFileName();
@@ -464,28 +473,34 @@ io.sockets.on('connection', function (socket) {
     files[machineName].setAmountUploaded(files[machineName].getAmountUploaded() + data['data'].length);
     // Add data to data buffer.
     files[machineName].setData(files[machineName].getData() + data['data']);
+    // Set time of upload occurence.
+    var date = new Date();
+    files[machineName].setDateUploaded(date.getTime());
     
     if (files[machineName].getAmountUploaded() == files[machineName].getFileSize())  {
       // File is fully uploaded.
       fs.write(files[machineName].getHandler(), files[machineName].getData(), null, 'binary', function(err, written) {
         // Record file in database.
         files[machineName].exists(function(error, exists, doc) {
+          
           if (error) {
             console.log(error);
           }
           else if (exists === false) {
             // Is a new file, so save it to database.
-            files[machineName].save();
+            files[machineName].save(function(err, data) {
+              if (error) {
+                throw error;
+              }
+            });
           }
           else if (exists === true) {
             // Update existing database record.
-//            files[machineName].setAmountUploaded(files[machineName].getAmountUploaded() + files[machineName].getData().length);
             files[machineName].setId(doc._id);
             files[machineName].update(function(error, success) {
               if (error) {
                 throw error;
               }
-              console.log('Record successfully updated.');
             });
           }
         });
@@ -500,20 +515,21 @@ io.sockets.on('connection', function (socket) {
               if (error) {
                 throw error;
               }
-              console.log('Record successfully updated.');
             });
             // Create thumbnails.
             var options = {
               path: '/static/files',
-              dimensions: '300x?'
+              dimensions: '200x?'
             };
             files[machineName].createThumbnail(options, function(error, thumbName) {
               if (error) {
                 throw error;
               }
               else {
-             // Move file completed.  Can now generate thumbnail.
+               // Move file completed.  Can now generate thumbnail.
                 socket.emit('done', {'image' : 'files/' + thumbName});
+                // Upload fully complete. Destroy MovieFile object for this file.
+                delete files[machineName];
               }
             });
             
@@ -524,19 +540,27 @@ io.sockets.on('connection', function (socket) {
     else if (files[machineName].getData().length > 10485760) { 
       // Data Buffer is full (has reached 10MB) proceed to write buffer to file on server.
       fs.write(files[machineName].getHandler(), files[machineName].getData(), null, 'binary', function(err, written) {
+        console.log('fs.write');
         // Record file in database.
         files[machineName].exists(function(error, exists, doc) {
+          console.log('files[machineName].exists');
           if (error) {
             console.log(error);
           }
           else if (exists === false) {
             // Is a new file, so save it to database.
-            files[machineName].save();
+            console.log('save');
+            files[machineName].save(function(err, data) {
+              if (err) {
+                throw err;
+              }
+            });
           }
           else if (exists === true) {
             // Update existing database record.
 //            files[machineName].setAmountUploaded(files[machineName].getAmountUploaded() + files[machineName].getData().length);
             files[machineName].setId(doc._id);
+            console.log('Update');
             files[machineName].update(function(error, success) {
               if (error) {
                 throw error;
