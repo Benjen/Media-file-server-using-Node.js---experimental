@@ -4,6 +4,7 @@
   , "private": true
   , "dependencies": {
       "express": "2.5.11"
+    , "fluent-ffmpeg": "1.1.x"
     , "jade": ">= 0.0.1"
     , "socket.io": "0.9.x"
     , "mongoose": "2.7.x"

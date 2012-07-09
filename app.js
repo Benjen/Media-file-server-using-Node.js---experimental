@@ -4,15 +4,16 @@
  */
 
 var async = require('async')
+  , exec = require('child_process').exec
   , express = require('express')
-  , routes = require('./routes')
   , io
   , files = {} // Holds info on files currently being uploaded.
+  , ffmpeg = require('fluent-ffmpeg')
   , fs = require('fs')
   , models = require('./models')
   , mongoose = require('mongoose')
+  , routes = require('./routes')
   , Step = require('step')
-  , exec = require('child_process').exec
   , util = require('util')
   , _ = require('underscore');
 
@@ -305,37 +306,75 @@ MovieFile.prototype.retrieveMachineFileName = function(filename, filesize, next)
  *   Function to call on completion of this function.
  */
 MovieFile.prototype.createThumbnail = function(options, next) {
+  console.log(this.getMachineFileName());
   // Validate arguments.
-  if (typeof options.x === 'undefined' && options.y === 'undefined') {
-    var error = new Error('Must include at least an X or Y dimension for the thumbnail to be generated.');
+  if (typeof options.dimensions === 'undefined') {
+    var error = new Error('Must include dimensions for the thumbnail to be generated.');
     next(error, false);
   }
   if (typeof options.path !== 'string') {
     var error = new Error('Must provide a path to which to save the created thumbnail.');
     next(error, false);
   }
-  if (typeof this.getMachineFileName() !== 'string') {
+  if (typeof this.getMachineFileName() !== 'number') {
     var error = new Error('Cannot create thumb as this file does not have a vaild machine name.');
     next(error, false);
   }
   
+  
   // Create thumbnail.
   var machineName = this.getMachineFileName();
-  var thumbName = machineName + '.jpg';
-  var xDimension;
-  var yDimension;
-  // Get aspect ratio of movie.
+  // Remove any leading and trailing forward slashes from path.
+  var path = options.path.replace(/^\/|\/$/g, '');
+//  var originalXDimension;
+//  var originalYDimension;
+//  var thumbXDimension;
+//  var thumbYDimension;
+//  var aspectRatio;
+  
+//  // Calculate original file dimensions and aspect ratio.
+//  Step(
+//    function getMovieFileDimensions() {
+//      exec("ffmpeg -i " + path + "/" + machineName, this);
+//    },
+//    function setAspectRatio(err, results) {
+//      console.log(results);
+//      var regex = /([0-9]{1,4})x([0-9]{1,4})/;
+//      var regexMatches = results.match(regex);
+//      console.log(regexMatches);
+//      var dimensionsString = regexMatches[0].split(/x/i);
+//      originalXDimension = Number(dimensionsString[0]);
+//      originalYDimension = Number(dimensionsString[1]);
+//      aspectRatio = originalXDimension / originalYDimension; 
+//      console.log(aspectRatio);
+//    }
+//  );
+  
+//  var thumbName = machineName + '_' + thumbXDimension + 'x' + thumbYDimension + '.jpg';
+  var dimensions = options.dimensions;
   
   // Set dimensions of thumb.
-  exec("ffmpeg -i " + options.path + "/" + machineName  + " -ss 02:30 -r 1 -an -vframes 1 -f mjpeg " + options.path + "/" + thumbName, function(error) {
-    if (error) {
-      next(error, false);
-    }
-    else {
-      // Send upload completed response to client.
-      next(null, thumbName);
-    }
- });
+  var proc = new ffmpeg({ source: path + "/" + machineName, nolog: true })
+//  .withSize('150x100')
+//  // take 2 screenshots at predefined timemarks
+//  .takeScreenshots({ count: 1, timemarks: [ '00:00:02.000', '6' ] }, path, function(err) {
+//    console.log('screenshots were saved');
+//  });
+    .withSize(dimensions)
+    .takeScreenshots({ 
+        count: 1, 
+        timemarks: [ '00:00:02.000' ]
+      }, 
+      path, 
+      function(err, files) {
+//        if (err) {
+//          next(err, false);
+//        }
+//        else {
+          // Send upload completed response to client.
+          next(null, files);
+//        }
+      });
 };
 
 
@@ -449,7 +488,8 @@ io.sockets.on('connection', function (socket) {
               console.log('Record successfully updated.');
             });
           }
-        });var input = fs.createReadStream("temp/" + machineName);
+        });
+        var input = fs.createReadStream("temp/" + machineName);
         var output = fs.createWriteStream("static/files/" + machineName);
         util.pump(input, output, function(error) {
           // Delete temp media file.
@@ -465,8 +505,7 @@ io.sockets.on('connection', function (socket) {
             // Create thumbnails.
             var options = {
               path: '/static/files',
-              x: 400,
-              y: 300
+              dimensions: '300x?'
             };
             files[machineName].createThumbnail(options, function(error, thumbName) {
               if (error) {
