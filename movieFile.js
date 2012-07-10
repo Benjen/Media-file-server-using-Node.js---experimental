@@ -2,6 +2,8 @@
  * 
  */
 var ffmpeg = require('fluent-ffmpeg');
+var fs = require('fs');
+var mongoose = require('mongoose');
 
 function MovieFile(mongoose) {
   var Movie = mongoose.model('Movie');
@@ -327,4 +329,81 @@ MovieFile.prototype.update = function(next) {
   }
 };
 
+var TrashCollector = function() {
+  var Movie = mongoose.model('Movie');
+  this.files = new Array();
+  this.tempPath = '';
+  this.timeLimit = 0;
+  this.opCompleted = true;
+  
+  /*
+   * Init function
+   * 
+   * @param options
+   *   tempPath: (String) path of temp storage directory.
+   *   interval: (Number) interval, in seconds, for running trash collection functions.
+   *   timeLimit: (Number) length of time temporary files will remain on server.
+   */
+  this.init= function(options) {
+    var self = this;
+    this.tempPath = options.tempPath || './temp';
+    // Set interval for trash collecting in seconds (default 6 hours)
+    this.interval = options.interval || 21600;
+    // Set the time limit (in milliseconds) for which temporary file will be removed from server.
+    this.timeLimit = options.timeLimit * 60 * 1000 || 0;
+    setInterval(function() {
+      // Only run if previous call has completed. Prevents multiple 
+      // overlapping runs of same function.
+      if (self.opCompleted === true) {
+        self.opCompleted = false;
+        self.scanForOrphanedFiles();
+      }
+    }, this.interval * 1000);
+  };
+  
+  /** 
+   * Detects files in temp directory which do not have corresponding database record (e.g. are orphaned)
+   */
+  this.scanForOrphanedFiles = function() {
+    var self = this;
+    // Get list of files in temp directory.
+    this.files = fs.readdir(this.tempPath, function(err, files) {
+      // Check if files have record in database.
+      Movie
+        .where('machineFileName').in(files)
+        .exec(function(err, docs) {
+          // Remove record and file if file is older than prescribed time limit.
+          var date = new Date();
+          var expiryDate = date.getTime() - self.timeLimit;
+          console.log('*********');
+          docs.forEach(function(file, index) {
+            if (file.dateUploaded < expiryDate) {
+              console.log(file.name + ' ' + file.machineFileName + ' file expired.');
+              // Delete file.
+              fs.unlink(self.tempPath + '/' + file.machineFileName, function(err) {
+                if (err) {
+                  throw err;
+                }
+                else {}
+                  // Remove record from database.
+                  Movie.remove({ _id: file._id }, function(err, result) {
+                    if (err) {
+                      throw err;
+                    }
+                    console.log('Movie deleted.');
+                  });
+              });
+            }
+            else {
+              console.log(file.name + ' ' + file.machineFileName + ' file not expired.');
+            }
+          });
+          self.opCompleted = true;
+        });
+      
+    });
+  };
+};
+
 exports.MovieFile = MovieFile;
+exports.TrashCollector = TrashCollector;

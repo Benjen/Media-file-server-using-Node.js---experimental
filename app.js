@@ -14,6 +14,7 @@ var async = require('async')
   , MovieFile = require('./movieFile').MovieFile
   , routes = require('./routes')
   , Step = require('step')
+  , TrashCollector = require('./movieFile').TrashCollector
   , util = require('util')
   , _ = require('underscore');
 
@@ -51,6 +52,18 @@ models.defineModels(mongoose, function() {
   db = mongoose.connect(app.set('db-uri'));
 });
 
+
+/*
+ * Initialize movie file trash collector
+ */
+var trashCollector = new TrashCollector();
+trashCollector.init({
+  tempPath: './temp',
+  interval: 4,
+  // temporary file expiration limit of 5 minutes.
+  timeLimit: 1
+});
+
 /*
  * Socket.io events
  */
@@ -66,6 +79,7 @@ io.sockets.on('connection', function (socket) {
   socket.on('start', function (data) { 
     var name = data.name;
     var size = data.fileSize;
+    var date = new Date();
     // Create instance of MovieFile object.  
     var movieFile = new MovieFile(mongoose);
     movieFile.setName(name);
@@ -73,13 +87,18 @@ io.sockets.on('connection', function (socket) {
     movieFile.setFileSize(size);
     movieFile.setData('');
     movieFile.setAmountUploaded(0);
+    movieFile.setDateUploaded(date.getTime());
     // Get the machine name for the file.
     movieFile.exists(function(err, exists, record) {
       if (exists === true && record !== 'undefined') {
         // Is an existing file so get its machine name.
         movieFile.setMachineFileName(record.machineFileName);
         movieFile.setId(record._id);
-        console.log(record);
+        movieFile.update(function(err, data) {
+          if (err) {
+            throw err;
+          }
+        });
       }
       else {
         // Is a new file so give it a machine name.
