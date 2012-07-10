@@ -67,6 +67,15 @@ function startUpload() {
 }
 
 /**
+ * Cancel uploading of current file.
+ */
+socket.on('cancelUpload', function(data) {
+  // TODO
+  alert('Upload cancelled. ' + data.message);
+  window.location.reload();
+});
+
+/**
  * Send file to server
  */
 socket.on('moreData', function (data) {

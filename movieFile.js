@@ -342,7 +342,7 @@ var TrashCollector = function() {
    * @param options
    *   tempPath: (String) path of temp storage directory.
    *   interval: (Number) interval, in seconds, for running trash collection functions.
-   *   timeLimit: (Number) length of time temporary files will remain on server.
+   *   timeLimit: (Number) length of time temporary files will remain on server in minutes.
    */
   this.init= function(options) {
     var self = this;
@@ -368,6 +368,11 @@ var TrashCollector = function() {
     var self = this;
     // Get list of files in temp directory.
     this.files = fs.readdir(this.tempPath, function(err, files) {
+      if (files.length === 0) {
+        // No files in temp directory so exit function.
+        self.opCompleted = true;
+        return;
+      }      
       // Check if files have record in database.
       Movie
         .where('machineFileName').in(files)
@@ -375,30 +380,33 @@ var TrashCollector = function() {
           // Remove record and file if file is older than prescribed time limit.
           var date = new Date();
           var expiryDate = date.getTime() - self.timeLimit;
-          console.log('*********');
+          var numberOfRecords = docs.length;
           docs.forEach(function(file, index) {
             if (file.dateUploaded < expiryDate) {
-              console.log(file.name + ' ' + file.machineFileName + ' file expired.');
               // Delete file.
-              fs.unlink(self.tempPath + '/' + file.machineFileName, function(err) {
+              fs.unlink(self.tempPath + '/' + file.machineFileName, function(err, result) {
                 if (err) {
                   throw err;
                 }
-                else {}
+                else {
                   // Remove record from database.
                   Movie.remove({ _id: file._id }, function(err, result) {
                     if (err) {
                       throw err;
                     }
-                    console.log('Movie deleted.');
                   });
+                }
               });
             }
             else {
-              console.log(file.name + ' ' + file.machineFileName + ' file not expired.');
+              // File not expired, so do nothing.
+            }
+            // Mark operation as completed if last record has been processed.
+            if (index + 1 === numberOfRecords) {
+              self.opCompleted = true;
             }
           });
-          self.opCompleted = true;
+          
         });
       
     });

@@ -91,6 +91,17 @@ io.sockets.on('connection', function (socket) {
     // Get the machine name for the file.
     movieFile.exists(function(err, exists, record) {
       if (exists === true && record !== 'undefined') {
+        // Check if a completed uploaded copy is already on the server as 
+        // we don't want a duplicate copy.
+        if (record.permanent === true) {
+          socket.emit('cancelUpload', { 
+            message: 'A copy of this file has already been uploaded.  Please delete the uploaded copy before proceeding.' ,
+            movieId: record._id
+          });
+          // Exit function.
+          return;
+        } 
+        
         // Is an existing file so get its machine name.
         movieFile.setMachineFileName(record.machineFileName);
         movieFile.setId(record._id);
