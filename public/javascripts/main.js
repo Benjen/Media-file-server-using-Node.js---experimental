@@ -22,11 +22,18 @@ function ready() {
 var selectedFile;
 function fileChosen(event) {
   selectedFile = event.target.files[0];
-  console.info(selectedFile);
+  console.info(selectedFile.type);
   // Validate that file is video.
-  
+  var fileType = /video.*/;
+  if (selectedFile.type.search(fileType) === -1) {
+    alert('It appears you are trying to upload a non-video file. Only video files can be uploaded.');
+    // Reset file input element.
+    document.getElementById('file-box').value = '';
+  }
   // Add name of chosen file to form.
   document.getElementById('name').value = selectedFile.name;
+  // Select name input contents so user can change name.
+  document.getElementById('name').select;
 }
 
 /**
@@ -74,7 +81,7 @@ function startUpload() {
  */
 socket.on('cancelUpload', function(data) {
   // TODO
-  alert('Upload cancelled. ' + data.message);
+  alert(data.message);
   window.location.reload();
 });
 

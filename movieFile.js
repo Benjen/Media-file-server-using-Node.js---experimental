@@ -5,7 +5,7 @@ var ffmpeg = require('fluent-ffmpeg');
 var fs = require('fs');
 var mongoose = require('mongoose');
 
-function MovieFile(mongoose) {
+function MovieFile(options) {
   var Movie = mongoose.model('Movie');
   this.id;
   this.name;
@@ -13,13 +13,40 @@ function MovieFile(mongoose) {
   this.dateUploaded;
   this.downloaded;
   this.handler;
+  this.filesDir;
   this.fileSize = 0;
   this.machineFileName;
 //  this.Movie = mongoose.model('Movie');
   this.originalFileName;
   this.permanent = false;
+  this.tempDir;
+  
+  /**
+   * Initialization function
+   */
+  (function() {
+    // Validate options.
+    if (typeof options.tempDir === 'undefined') {
+      throw error = new Error('Missing argument options.tempDir.');
+    }
+    if (typeof options.filesDir === 'undefined') {
+      throw error = new Error('Missing argument options.filesDir.');
+    }
+    this.filesDir = options.filesDir;
+    this.tempDir = options.tempDir;
+  })();
+
  
-   /**
+  /**
+   * Create a new machine file name based on timestamp
+   */
+  this.createNewMachineFileName = function() {
+    var date = new Date();
+    this.machineFileName = date.getTime();
+    return this.machineFileName;
+  };
+
+  /**
    * Check if record for this movie file exists in the database.
    * 
    * Record is check based on file name and file size. 
@@ -63,73 +90,81 @@ function MovieFile(mongoose) {
 
   this.fetch = function(name, size) {};
   
+  this.getAmountUploaded = function() {
+    return this.downloaded;
+  };
+
   this.getData = function() {
     return this.data;
-  };
-  
-  this.setData = function(data) {
-    this.data = data;
   };
   
   this.getDateUploaded = function() {
     return this.dateUploaded;
   };
   
+  this.getFileSize = function() {
+    return this.fileSize;
+  };
+
+  this.getHandler = function() {
+    return this.handler;
+  };
+
+  this.getId = function() {
+    return this.id;
+  };
+
+  this.getMachineFileName = function() {
+    return this.machineFileName;
+  };
+
+  this.getName = function() {
+    return this.name;
+  };
+
+  this.getOriginalFileName = function() {
+    return this.originalFileName;
+  };
+
+  this.getPermanent = function() {
+    return this.permanent;
+  };
+  
+  this.setData = function(data) {
+    this.data = data;
+  };
+  
   this.setDateUploaded = function(date) {
     this.dateUploaded = date;
   };
 
-  this.getAmountUploaded = function() {
-    return this.downloaded;
-  };
   this.setAmountUploaded = function(amount) {
     this.downloaded = amount;
   };
-  this.getFileSize = function() {
-    return this.fileSize;
-  };
+
   this.setFileSize = function(size) {
     this.fileSize = size;
   };
-  this.getHandler = function() {
-    return this.handler;
-  };
+
   this.setHandler = function(handler) {
     this.handler = handler;
   };
-  this.createNewMachineFileName = function() {
-    var date = new Date();
-    this.machineFileName = date.getTime();
-    return this.machineFileName;
-  };
-  this.getMachineFileName = function() {
-    return this.machineFileName;
-  };
-  this.getId = function() {
-    return this.id;
-  };
+
   this.setId = function(id) {
     this.id = id;
   };
+
   this.setMachineFileName = function(machineFileName) {
     this.machineFileName = machineFileName;
   };
-  this.getName = function() {
-    return this.name;
-  };
+
   this.setName = function(name) {
     this.name = name;
   };
-  this.getOriginalFileName = function() {
-    return this.originalFileName;
-  };
+
   this.setOriginalFileName = function(originalFileName) {
     this.originalFileName = originalFileName;
   };  
-  
-  this.getPermanent = function() {
-    return this.permanent;
-  };
   
   this.setPermanent = function(value) {
     if (typeof value !== 'boolean') {
@@ -191,15 +226,31 @@ MovieFile.prototype.createThumbnail = function(options, next) {
 };
 
 /**
- * Remove movie file from server and database
+ * Remove file from server and database
+ * 
+ * 
  */
 MovieFile.prototype.remove = function(next) {
   if (typeof this.getId() === 'undefined') {
     var error = new Error('MovieFile.id has not been set for this object.');
     next(error);
   }
+  var id = this.getId();
+  var dir;
+  // Check if file is in temp or files directory.
+  if (this.getPermanent() === true) {
+    dir = this.fileDir;
+  }
+  else {
+    dir = this.tempDir;
+  }
+  dir = './temp';
   // Remove file from server.
+  var file = dir + '/' + this.getMachineFileName();
   fs.unlink(file, function(err, result) {
+    if (err) {
+      throw err;
+    }
     // Remove file record from database.
     Movie.remove({ _id: id }, function(err, result) {
       if (err) {
@@ -283,7 +334,6 @@ MovieFile.prototype.save = function(next) {
       next(err);
     }
     else {
-      console.log(typeof next);
       next(null, data);
     }
   });

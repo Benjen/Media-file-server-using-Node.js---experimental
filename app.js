@@ -9,14 +9,19 @@ var async = require('async')
   , io
   , files = {} // Holds info on files currently being uploaded.
   , fs = require('fs')
+  , mime = require('mime-magic')
   , models = require('./models')
   , mongoose = require('mongoose')
   , MovieFile = require('./movieFile').MovieFile
   , routes = require('./routes')
+  , sock // Holds the client-server socket used by socket.io events.
   , Step = require('step')
   , TrashCollector = require('./movieFile').TrashCollector
   , util = require('util')
   , _ = require('underscore');
+
+const TEMPDIR = './temp';
+const FILESDIR = './static/files';
 
 var app = module.exports = express.createServer();
 
@@ -58,7 +63,7 @@ models.defineModels(mongoose, function() {
  */
 var trashCollector = new TrashCollector();
 trashCollector.init({
-  tempPath: './temp',
+  tempPath: TEMPDIR,
   interval: 4,
   // temporary file expiration limit of 5 minutes.
   timeLimit: 1
@@ -71,9 +76,90 @@ trashCollector.init({
 // Initialize socket.io.
 io = require('socket.io').listen(app);
 
+// Processes file after upload has completed.  
+function uploadCompleted(machineName) {
+  fs.write(files[machineName].getHandler(), files[machineName].getData(), null, 'binary', function(err, written) {
+    // Validate file.
+    mime.fileWrapper(TEMPDIR + '/' + machineName, function(err, type) {
+      if (err) {
+        throw err;
+      }
+      var regex = /video.*/;
+      if (type.search(regex) === -1) {
+        sock.emit('cancelUpload', { message: 'Upload failed.  The uploaded file is not a valid movie file.' });
+        // Delete file.
+        // Remove record from database.
+        files[machineName].remove(function(err) {
+          if (err) {
+            throw err;
+          }
+          delete files[machineName];
+        });
+        return;
+      }
+      
+      // Record file in database.
+      files[machineName].exists(function(error, exists, doc) {
+        if (error) {
+          console.log(error);
+        }
+        else if (exists === false) {
+          // Is a new file, so save it to database.
+          files[machineName].save(function(err, data) {
+            if (error) {
+              throw error;
+            }
+          });
+        }
+        else if (exists === true) {
+          // Update existing database record.
+          files[machineName].setId(doc._id);
+          files[machineName].update(function(error, success) {
+            if (error) {
+              throw error;
+            }
+          });
+        }
+      });
+      var input = fs.createReadStream(TEMPDIR + '/' + machineName);
+      var output = fs.createWriteStream(FILESDIR + '/' + machineName);
+      util.pump(input, output, function(error) {
+        // Delete temp media file.
+        fs.unlink("temp/" + machineName, function (error) { 
+          // Mark file in database as permanent.
+          files[machineName].setPermanent(true);
+          files[machineName].update(function(error, success) {
+            if (error) {
+              throw error;
+            }
+          });
+          // Create thumbnail images.
+          var options = {
+            path: FILESDIR,
+            dimensions: '200x?'
+          };
+          files[machineName].createThumbnail(options, function(error, thumbName) {
+            if (error) {
+              throw error;
+            }
+            else {
+             // Move file completed.  Can now generate thumbnail.
+              sock.emit('done', {'image' : 'files/' + thumbName});
+              // Upload fully complete. Destroy MovieFile object for this file.
+              delete files[machineName];
+            }
+          });
+          
+        });
+      });
+    });    
+  });
+}
+
 // Set on connection event.
 io.sockets.on('connection', function (socket) {
-  
+  // Assign socket to app wide variable.
+  sock = socket;
   // Start uploading process
   //   @param data contains the variables passed through from the html file.
   socket.on('start', function (data) { 
@@ -81,7 +167,10 @@ io.sockets.on('connection', function (socket) {
     var size = data.fileSize;
     var date = new Date();
     // Create instance of MovieFile object.  
-    var movieFile = new MovieFile(mongoose);
+    var movieFile = new MovieFile({ 
+      filesDir: FILESDIR, 
+      tempDir: TEMPDIR 
+    });
     movieFile.setName(name);
     movieFile.setOriginalFileName(name);
     movieFile.setFileSize(size);
@@ -118,6 +207,7 @@ io.sockets.on('connection', function (socket) {
           if (err) {
             throw error;
           }
+          movieFile.setId(data._id);
         });
       }
       //Create a new Entry in The Files Variable.
@@ -176,63 +266,7 @@ io.sockets.on('connection', function (socket) {
     
     if (files[machineName].getAmountUploaded() == files[machineName].getFileSize())  {
       // File is fully uploaded.
-      fs.write(files[machineName].getHandler(), files[machineName].getData(), null, 'binary', function(err, written) {
-        // Record file in database.
-        files[machineName].exists(function(error, exists, doc) {
-          
-          if (error) {
-            console.log(error);
-          }
-          else if (exists === false) {
-            // Is a new file, so save it to database.
-            files[machineName].save(function(err, data) {
-              if (error) {
-                throw error;
-              }
-            });
-          }
-          else if (exists === true) {
-            // Update existing database record.
-            files[machineName].setId(doc._id);
-            files[machineName].update(function(error, success) {
-              if (error) {
-                throw error;
-              }
-            });
-          }
-        });
-        var input = fs.createReadStream("temp/" + machineName);
-        var output = fs.createWriteStream("static/files/" + machineName);
-        util.pump(input, output, function(error) {
-          // Delete temp media file.
-          fs.unlink("temp/" + machineName, function (error) { 
-            // Mark file in database as permanent.
-            files[machineName].setPermanent(true);
-            files[machineName].update(function(error, success) {
-              if (error) {
-                throw error;
-              }
-            });
-            // Create thumbnails.
-            var options = {
-              path: '/static/files',
-              dimensions: '200x?'
-            };
-            files[machineName].createThumbnail(options, function(error, thumbName) {
-              if (error) {
-                throw error;
-              }
-              else {
-               // Move file completed.  Can now generate thumbnail.
-                socket.emit('done', {'image' : 'files/' + thumbName});
-                // Upload fully complete. Destroy MovieFile object for this file.
-                delete files[machineName];
-              }
-            });
-            
-          });
-        });
-      });
+      uploadCompleted(machineName, socket);
     }
     else if (files[machineName].getData().length > 10485760) { 
       // Data Buffer is full (has reached 10MB) proceed to write buffer to file on server.
