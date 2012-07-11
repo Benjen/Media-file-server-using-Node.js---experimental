@@ -382,8 +382,8 @@ MovieFile.prototype.update = function(next) {
 var TrashCollector = function() {
   var Movie = mongoose.model('Movie');
   this.files = new Array();
-  this.tempPath = '';
-  this.timeLimit = 0;
+  this.tempPath;
+  this.timeLimit;
   this.opCompleted = true;
   
   /*
@@ -396,11 +396,23 @@ var TrashCollector = function() {
    */
   this.init= function(options) {
     var self = this;
-    this.tempPath = options.tempPath || './temp';
+    // Validate options.
+    if (typeof options.tempPath !== 'string') {
+      throw error = new Error('Argument options.tempPath must be a string.');
+    }
+    if (typeof options.interval !== 'number') {
+      throw error = new Error('Argument options.interval must be an integer.');
+    }
+    if (typeof options.timeLimit !== 'number') {
+      throw error = new Error('Argument options.timeLimit must be an integer.');
+    }
+    
+    this.tempPath = options.tempPath;
     // Set interval for trash collecting in seconds (default 6 hours)
-    this.interval = options.interval || 21600;
-    // Set the time limit (in milliseconds) for which temporary file will be removed from server.
-    this.timeLimit = options.timeLimit * 60 * 1000 || 0;
+    this.interval = options.interval;
+    // Set the time limit (in milliseconds) for which temporary file will be removed 
+    // from server. Options.timeLimit is in minutes.
+    this.timeLimit = options.timeLimit * 60 * 1000;
     setInterval(function() {
       // Only run if previous call has completed. Prevents multiple 
       // overlapping runs of same function.

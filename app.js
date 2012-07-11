@@ -65,7 +65,7 @@ var trashCollector = new TrashCollector();
 trashCollector.init({
   tempPath: TEMPDIR,
   interval: 4,
-  // temporary file expiration limit of 5 minutes.
+  // temporary file expiration limit in minutes.
   timeLimit: 1
 });
 
