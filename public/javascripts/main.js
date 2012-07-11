@@ -22,6 +22,9 @@ function ready() {
 var selectedFile;
 function fileChosen(event) {
   selectedFile = event.target.files[0];
+  console.info(selectedFile);
+  // Validate that file is video.
+  
   // Add name of chosen file to form.
   document.getElementById('name').value = selectedFile.name;
 }
