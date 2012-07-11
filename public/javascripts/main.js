@@ -22,18 +22,19 @@ function ready() {
 var selectedFile;
 function fileChosen(event) {
   selectedFile = event.target.files[0];
-  console.info(selectedFile.type);
+  console.info(selectedFile);
   // Validate that file is video.
   var fileType = /video.*/;
   if (selectedFile.type.search(fileType) === -1) {
     alert('It appears you are trying to upload a non-video file. Only video files can be uploaded.');
     // Reset file input element.
     document.getElementById('file-box').value = '';
+    document.getElementById('name').value = '';
   }
   // Add name of chosen file to form.
   document.getElementById('name').value = selectedFile.name;
   // Select name input contents so user can change name.
-  document.getElementById('name').select;
+  document.getElementById('name').select();
 }
 
 /**
@@ -42,14 +43,17 @@ function fileChosen(event) {
 var socket = io.connect('http://localhost:3000');
 var fReader;
 var name;
+var filename;
 function startUpload() {
   if (document.getElementById('file-box').value != "") {
     // FileReader is HTML5 object.
     fReader = new FileReader();
-    // Get name of the file.
+    // Get name of the movie.
     name = document.getElementById('name').value;
+    // Get name of the file.
+    filename = selectedFile.name;
     // Create ui content for uploading process.
-    var content = "<span id='name-area'>Uploading " + selectedFile.name + " as " + name + "</span>";
+    var content = "<span id='name-area'>Uploading " + filename + " as " + name + "</span>";
     content += '<div id="progress-container"><div id="progress-bar"></div></div><span id="percent">0%</span>';
     content += "<span id='uploaded'> - <span id='MB'>0</span>/" + Math.round(selectedFile.size / 1048576) + "MB</span>";
     document.getElementById('upload-area').innerHTML = content;
@@ -57,9 +61,10 @@ function startUpload() {
     // The onload event is automatically called each time FileReader complete a 
     // file read. See https://developer.mozilla.org/en/DOM/FileReader   
     fReader.onload = function(event) {
-      console.info(event);
+      console.info(filename);
       socket.emit('upload', { 
         'name': name,
+        'filename': filename,
         'fileSize': selectedFile.size,
         data: event.target.result 
       });
@@ -67,6 +72,7 @@ function startUpload() {
     // Create socket start event.
     socket.emit('start', { 
       'name': name, 
+      'filename': filename,
       'fileSize': selectedFile.size 
     });
   }

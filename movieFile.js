@@ -60,7 +60,7 @@ function MovieFile(options) {
    */
   this.exists = function(next) {
     // Confirm necessary object variables have been set.
-    if (typeof this.originalFileName === 'undefined') {
+    if (typeof this.originalFileName !== 'string') {
       throw error = new Error('Variable originalFilename has not been set for MovieFile.');
     }
     if (typeof this.fileSize !== 'number') {
@@ -220,7 +220,6 @@ MovieFile.prototype.createThumbnail = function(options, next) {
       path, 
       function(err, files) {
         // Send response to callback function.
-        console.log(files);
         next(err, files);
       });
 };
@@ -244,7 +243,6 @@ MovieFile.prototype.remove = function(next) {
   else {
     dir = this.tempDir;
   }
-  dir = './temp';
   // Remove file from server.
   var file = dir + '/' + this.getMachineFileName();
   fs.unlink(file, function(err, result) {
@@ -257,7 +255,6 @@ MovieFile.prototype.remove = function(next) {
         next(err);
       }
       else {
-        console.log('File record removed from database.');
         next(null, result);
       }
     });
@@ -312,12 +309,11 @@ MovieFile.prototype.retrieveMachineFileName = function(filename, filesize, next)
  * Save record of movie file to database
  */
 MovieFile.prototype.save = function(next) {
-  console.log('save file');
   // save movie to database.
   var values = {
     name: this.getName(),
     machineFileName: this.getMachineFileName(),
-    originalFileName: this.getName(),
+    originalFileName: this.getOriginalFileName(),
     size: this.getFileSize(),
     type: 'unknown',
     dateUploaded: this.getDateUploaded(),
@@ -356,7 +352,7 @@ MovieFile.prototype.update = function(next) {
 //        _id: this.getId(),
         name: this.getName(),
         machineFileName: this.getMachineFileName(),
-        originalFileName: this.getName(),
+        originalFileName: this.getOriginalFileName(),
         size: this.getFileSize(),
         type: 'unknown',
         dateUploaded: this.getDateUploaded(),

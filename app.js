@@ -165,6 +165,7 @@ io.sockets.on('connection', function (socket) {
   socket.on('start', function (data) { 
     var name = data.name;
     var size = data.fileSize;
+    var filename = data.filename;
     var date = new Date();
     // Create instance of MovieFile object.  
     var movieFile = new MovieFile({ 
@@ -172,7 +173,7 @@ io.sockets.on('connection', function (socket) {
       tempDir: TEMPDIR 
     });
     movieFile.setName(name);
-    movieFile.setOriginalFileName(name);
+    movieFile.setOriginalFileName(filename);
     movieFile.setFileSize(size);
     movieFile.setData('');
     movieFile.setAmountUploaded(0);
@@ -251,7 +252,7 @@ io.sockets.on('connection', function (socket) {
     // Get machine name of file.
     var machineName;
     var file = _.find(files, function(file) {
-      if (file.originalFileName === data.name && file.fileSize === data.fileSize) {
+      if (file.originalFileName === data.filename && file.fileSize === data.fileSize) {
         return true;
       }
     });
@@ -271,16 +272,13 @@ io.sockets.on('connection', function (socket) {
     else if (files[machineName].getData().length > 10485760) { 
       // Data Buffer is full (has reached 10MB) proceed to write buffer to file on server.
       fs.write(files[machineName].getHandler(), files[machineName].getData(), null, 'binary', function(err, written) {
-        console.log('fs.write');
         // Record file in database.
-        files[machineName].exists(function(error, exists, doc) {
-          console.log('files[machineName].exists');
-          if (error) {
-            console.log(error);
+        files[machineName].exists(function(err, exists, doc) {
+          if (err) {
+            throw error;
           }
           else if (exists === false) {
             // Is a new file, so save it to database.
-            console.log('save');
             files[machineName].save(function(err, data) {
               if (err) {
                 throw err;
@@ -291,7 +289,6 @@ io.sockets.on('connection', function (socket) {
             // Update existing database record.
 //            files[machineName].setAmountUploaded(files[machineName].getAmountUploaded() + files[machineName].getData().length);
             files[machineName].setId(doc._id);
-            console.log('Update');
             files[machineName].update(function(error, success) {
               if (error) {
                 throw error;
