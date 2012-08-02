@@ -183,7 +183,7 @@ function MovieFile(options) {
  *   calculate height; ?x240 - Fixed height, calculate width; 50% - 
  *   percental resizing; 320x240 - fixed size (plain ffmpeg way).
  *
- *   path - String denoting path to which thumbnail should be saved.
+ *   options.path - String denoting path to which thumbnail should be saved.
  *   
  * @param Function next
  *   Function to call on completion of this function.
@@ -215,7 +215,7 @@ MovieFile.prototype.createThumbnail = function(options, next) {
     .takeScreenshots({ 
         count: 1, 
         timemarks: [ '30' ],
-        filename: machineName + '_%r'
+        filename: machineName + '_thumb'
       }, 
       path, 
       function(err, files) {

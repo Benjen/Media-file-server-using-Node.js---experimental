@@ -22,7 +22,6 @@ function ready() {
 var selectedFile;
 function fileChosen(event) {
   selectedFile = event.target.files[0];
-  console.info(selectedFile);
   // Validate that file is video.
   var fileType = /video.*/;
   if (selectedFile.type.search(fileType) === -1) {
@@ -40,7 +39,7 @@ function fileChosen(event) {
 /**
  * Upload file
  */
-var socket = io.connect('http://localhost:3000');
+var socket = io.connect('http://media:3000');
 var fReader;
 var name;
 var filename;

@@ -5,6 +5,8 @@
 /*
  * GET home page.
  */
+var mongoose = require('mongoose');
+
 exports.upload = function(req, res) {
   res.render('upload', {
     locals: {
@@ -15,10 +17,18 @@ exports.upload = function(req, res) {
 };
 
 exports.index = function(req, res) {
-  res.render('index', { 
-    locals: {
-      title: 'Media Server' 
-    },
-    status: 200
+  // Get movies in database.
+  var Movie = mongoose.model('Movie');
+  var movie = new Movie();
+  Movie.find({ permanent: true }, function(err, docs) {
+    console.log(docs);
+    // Render content.
+    res.render('index', { 
+      locals: {
+        title: 'Media Server',
+        movies: docs
+      },
+      status: 200
+    });
   });
 };
