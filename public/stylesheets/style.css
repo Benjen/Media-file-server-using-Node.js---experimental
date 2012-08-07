@@ -17,3 +17,34 @@ a {
   padding: 2px;
   border: 1px solid grey;
 }
+
+.item {
+	display: inline-block;
+	border: 1px solid grey;
+	border-radius: 4px;
+	margin: 5px;
+	background-color: grey;
+	height: 134px;
+	overflow: hidden;
+}
+/* 
+ * Create 3D popout effect on hover. 
+ */
+.item:hover {
+  box-shadow: 6px 6px 2px grey;
+  position: relative;
+  top: -3px;
+  left: -3px;
+}
+
+.title {
+	background-color: black;
+	color: yellow;
+}
+ul {
+	position: relative;
+}
+#menu li {
+	display: inline-block;
+	padding: 2px 10px;
+}

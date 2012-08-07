@@ -19,9 +19,7 @@ exports.upload = function(req, res) {
 exports.index = function(req, res) {
   // Get movies in database.
   var Movie = mongoose.model('Movie');
-  var movie = new Movie();
   Movie.find({ permanent: true }, function(err, docs) {
-    console.log(docs);
     // Render content.
     res.render('index', { 
       locals: {
@@ -32,3 +30,27 @@ exports.index = function(req, res) {
     });
   });
 };
+
+exports.movie = function(req, res) {
+  var Movie = mongoose.model('Movie');
+  Movie.findById(req.params.id, function(err, doc) {
+    if (err) {
+      res.send('An error occured.', 500);
+    }
+//    else if (doc === null) {
+//      res.send('No record found.', 505);
+//    }
+    else {
+      console.log(doc);
+      res.render('movie', {
+        locals: {
+          title: 'Watch Movie',
+          movie: {
+            title: doc.name,
+            file: req.params.movieFileName
+          }
+        }
+      });
+    }
+  });
+}

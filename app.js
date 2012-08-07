@@ -54,6 +54,7 @@ app.configure('production', function(){
 models.defineModels(mongoose, function() {
   app.User = User = mongoose.model('User');
   app.Movie = Movie = mongoose.model('Movie');
+  app.Tag = Tag = mongoose.model('Tag');
   db = mongoose.connect(app.set('db-uri'));
 });
 
@@ -163,10 +164,12 @@ io.sockets.on('connection', function (socket) {
   // Start uploading process
   //   @param data contains the variables passed through from the html file.
   socket.on('start', function (data) { 
+    console.log(data);
     var name = data.name;
     var size = data.fileSize;
     var filename = data.filename;
     var date = new Date();
+    var tags = data.tags.split(' ');
     // Create instance of MovieFile object.  
     var movieFile = new MovieFile({ 
       filesDir: FILESDIR, 
@@ -178,6 +181,19 @@ io.sockets.on('connection', function (socket) {
     movieFile.setData('');
     movieFile.setAmountUploaded(0);
     movieFile.setDateUploaded(date.getTime());
+    // Set tags.
+    tag.forEach(function(item, index) {
+      // Check if tag already exists in database.
+      Tag.findOne({ title: item }, function(err, doc) {
+        if (err) {
+          throw err;
+        }
+        else {
+          console.log(doc);
+        }
+      });
+      // Save tag to database and retrieve new tag _id.
+    });
     // Get the machine name for the file.
     movieFile.exists(function(err, exists, record) {
       if (exists === true && record !== 'undefined') {
@@ -333,6 +349,8 @@ io.sockets.on('connection', function (socket) {
 app.get('/', routes.index);
 
 app.get('/upload', routes.upload);
+
+app.get('/movie/:id', routes.movie);
 
 app.listen(3000, function(){
   console.log("Express server listening on port %d in %s mode", app.address().port, app.settings.env);

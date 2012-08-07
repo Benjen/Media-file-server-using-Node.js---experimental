@@ -25,7 +25,7 @@ function defineModels(mongoose, fn) {
     'originalFileName': String,
     'size': Number,
     'type': String,
-    'permanent': { type: Boolean, default: false},
+    'permanent': { type: Boolean, default: false },
     'dateUploaded': Date,
     'amountUploaded': { type: Number, default: 0 },
     'viewed': Number,
@@ -36,6 +36,15 @@ function defineModels(mongoose, fn) {
   
   mongoose.model('Movie', Movie);
  
+  /**
+   * Model - Tag
+   */
+  Tag = new Schema({
+    'title': { type: String, unique: true, sparse: true }
+  }, { strict: true });
+  
+  mongoose.model('Tag', Tag);
+  
   fn();
 }
 

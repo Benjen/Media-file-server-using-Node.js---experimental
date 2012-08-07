@@ -7,6 +7,7 @@ var staticFileServer = {
 };
  
 function ready() {
+  // Setup file uploader.
   if(window.File && window.FileReader){ //These are the relevant HTML5 objects that we are going to use
     document.getElementById('upload-file-button').addEventListener('click', startUpload, false);
     document.getElementById('file-box').addEventListener('change', fileChosen, false);
@@ -43,6 +44,7 @@ var socket = io.connect('http://media:3000');
 var fReader;
 var name;
 var filename;
+var tags;
 function startUpload() {
   if (document.getElementById('file-box').value != "") {
     // FileReader is HTML5 object.
@@ -51,6 +53,8 @@ function startUpload() {
     name = document.getElementById('name').value;
     // Get name of the file.
     filename = selectedFile.name;
+    // Get tags.
+    tags = document.getElementById('tags').value;
     // Create ui content for uploading process.
     var content = "<span id='name-area'>Uploading " + filename + " as " + name + "</span>";
     content += '<div id="progress-container"><div id="progress-bar"></div></div><span id="percent">0%</span>';
@@ -65,6 +69,7 @@ function startUpload() {
         'name': name,
         'filename': filename,
         'fileSize': selectedFile.size,
+        tags: tags,
         data: event.target.result 
       });
     };
@@ -72,7 +77,8 @@ function startUpload() {
     socket.emit('start', { 
       'name': name, 
       'filename': filename,
-      'fileSize': selectedFile.size 
+      'fileSize': selectedFile.size,
+      tags: tags
     });
   }
   else {
