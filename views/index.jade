@@ -1,12 +1,13 @@
 h1= title
 include includes/menu
-content
+#content
   ul.items
     - for movie in movies
       li.item
+        .delete-movie
+          a(href="/movie/delete/#{movie._id}") X
         .title
           = movie.name
-        .image 
+        .image
           a(href="/movie/#{movie._id}")
             img(src="http://media:8080/files/#{movie.machineFileName}_thumb.jpg")
-     

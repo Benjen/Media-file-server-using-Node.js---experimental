@@ -5,17 +5,6 @@ var staticFileServer = {
   host: 'media',
   port: 8080
 };
- 
-function ready() {
-  // Setup file uploader.
-  if(window.File && window.FileReader){ //These are the relevant HTML5 objects that we are going to use
-    document.getElementById('upload-file-button').addEventListener('click', startUpload, false);
-    document.getElementById('file-box').addEventListener('change', fileChosen, false);
-  }
-  else {
-    document.getElementById('file-upload-area').innerHTML = "Your Browser Doesn't Support The File API. Please Update Your Browser";
-  }
-}
 
 /**
  * Select file
@@ -60,22 +49,22 @@ function startUpload() {
     content += '<div id="progress-container"><div id="progress-bar"></div></div><span id="percent">0%</span>';
     content += "<span id='uploaded'> - <span id='MB'>0</span>/" + Math.round(selectedFile.size / 1048576) + "MB</span>";
     document.getElementById('upload-area').innerHTML = content;
-    
-    // The onload event is automatically called each time FileReader complete a 
-    // file read. See https://developer.mozilla.org/en/DOM/FileReader   
+
+    // The onload event is automatically called each time FileReader complete a
+    // file read. See https://developer.mozilla.org/en/DOM/FileReader
     fReader.onload = function(event) {
       console.info(filename);
-      socket.emit('upload', { 
+      socket.emit('upload', {
         'name': name,
         'filename': filename,
         'fileSize': selectedFile.size,
         tags: tags,
-        data: event.target.result 
+        data: event.target.result
       });
     };
     // Create socket start event.
-    socket.emit('start', { 
-      'name': name, 
+    socket.emit('start', {
+      'name': name,
       'filename': filename,
       'fileSize': selectedFile.size,
       tags: tags
@@ -102,9 +91,9 @@ socket.on('cancelUpload', function(data) {
 socket.on('moreData', function (data) {
   updateBar(data['percent']);
   // Starting position of next block.
-  var place = data['place'] * 524288; 
+  var place = data['place'] * 524288;
   // Create variable to hold new block of data.
-  var newFile; 
+  var newFile;
   // Get next "slice" of the file to send to the server.
   if (selectedFile.webkitSlice) {
     newFile = selectedFile.webkitSlice(place, place + Math.min(524288, (selectedFile.size - place)));
@@ -129,7 +118,7 @@ function updateBar(percent){
 socket.on('done', function(data) {
   // Display upload completed content.
   var content = '<h3>Upload complete</h3>';
-  // 
+  //
   content += '<div><img src="http://' + staticFileServer.host + ':' + staticFileServer.port + '/' + data['image'] + '"/></div>';
   content += '<div><button type="button" id="upload-another-button">Upload another movie</button></div>';
   document.getElementById('upload-area').innerHTML = content;
@@ -138,3 +127,36 @@ socket.on('done', function(data) {
     location.reload(true);
   });
 });
+
+
+
+function ready() {
+  // Setup file uploader on upload page.
+  if (location.pathname === '/upload') {
+    if(window.File && window.FileReader){ //These are the relevant HTML5 objects that we are going to use
+      document.getElementById('upload-file-button').addEventListener('click', startUpload, false);
+      document.getElementById('file-box').addEventListener('change', fileChosen, false);
+    }
+    else {
+      document.getElementById('file-upload-area').innerHTML = "Your Browser Doesn't Support The File API. Please Update Your Browser";
+    }
+  }
+  /**
+   * Create delete movie option
+   */
+
+  // Hide delete widget by default.
+  $('.delete-movie').css('display', 'none');
+
+  $('li.item').each(function(index, element) {
+    $element = $(element);
+    // Show delete widget on mouseover.
+    $element.mouseover(function(event) {
+      $(event.currentTarget).children('.delete-movie').css('display', 'block');
+    });
+    // Hide delete widget on mouseout.
+    $element.mouseout(function(event) {
+      $(event.currentTarget).children('.delete-movie').css('display', 'none');
+    });
+  });
+}

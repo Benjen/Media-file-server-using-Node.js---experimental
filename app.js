@@ -25,13 +25,15 @@ const FILESDIR = './static/files';
 
 var app = module.exports = express.createServer();
 
-/* 
+/*
  * Configuration
  */
 
 app.configure(function(){
   app.set('views', __dirname + '/views');
   app.set('view engine', 'jade');
+  app.set('FILESDIR', FILESDIR);
+  app.set('TEMPDIR', TEMPDIR);
   app.use(express.bodyParser());
   app.use(express.methodOverride());
   app.use(app.router);
@@ -49,7 +51,7 @@ app.configure('production', function(){
 
 /*
  * Database models
- */ 
+ */
 
 models.defineModels(mongoose, function() {
   app.User = User = mongoose.model('User');
@@ -77,7 +79,7 @@ trashCollector.init({
 // Initialize socket.io.
 io = require('socket.io').listen(app);
 
-// Processes file after upload has completed.  
+// Processes file after upload has completed.
 function uploadCompleted(machineName) {
   fs.write(files[machineName].getHandler(), files[machineName].getData(), null, 'binary', function(err, written) {
     // Validate file.
@@ -98,7 +100,7 @@ function uploadCompleted(machineName) {
         });
         return;
       }
-      
+
       // Record file in database.
       files[machineName].exists(function(error, exists, doc) {
         if (error) {
@@ -126,7 +128,7 @@ function uploadCompleted(machineName) {
       var output = fs.createWriteStream(FILESDIR + '/' + machineName);
       util.pump(input, output, function(error) {
         // Delete temp media file.
-        fs.unlink("temp/" + machineName, function (error) { 
+        fs.unlink("temp/" + machineName, function (error) {
           // Mark file in database as permanent.
           files[machineName].setPermanent(true);
           files[machineName].update(function(error, success) {
@@ -150,10 +152,10 @@ function uploadCompleted(machineName) {
               delete files[machineName];
             }
           });
-          
+
         });
       });
-    });    
+    });
   });
 }
 
@@ -163,17 +165,16 @@ io.sockets.on('connection', function (socket) {
   sock = socket;
   // Start uploading process
   //   @param data contains the variables passed through from the html file.
-  socket.on('start', function (data) { 
-    console.log(data);
+  socket.on('start', function (data) {
     var name = data.name;
     var size = data.fileSize;
     var filename = data.filename;
     var date = new Date();
     var tags = data.tags.split(' ');
-    // Create instance of MovieFile object.  
-    var movieFile = new MovieFile({ 
-      filesDir: FILESDIR, 
-      tempDir: TEMPDIR 
+    // Create instance of MovieFile object.
+    var movieFile = new MovieFile({
+      filesDir: FILESDIR,
+      tempDir: TEMPDIR
     });
     movieFile.setName(name);
     movieFile.setOriginalFileName(filename);
@@ -182,32 +183,32 @@ io.sockets.on('connection', function (socket) {
     movieFile.setAmountUploaded(0);
     movieFile.setDateUploaded(date.getTime());
     // Set tags.
-    tag.forEach(function(item, index) {
-      // Check if tag already exists in database.
-      Tag.findOne({ title: item }, function(err, doc) {
-        if (err) {
-          throw err;
-        }
-        else {
-          console.log(doc);
-        }
-      });
-      // Save tag to database and retrieve new tag _id.
-    });
+//    tag.forEach(function(item, index) {
+//      // Check if tag already exists in database.
+//      Tag.findOne({ title: item }, function(err, doc) {
+//        if (err) {
+//          throw err;
+//        }
+//        else {
+//          console.log(doc);
+//        }
+//      });
+//      // Save tag to database and retrieve new tag _id.
+//    });
     // Get the machine name for the file.
     movieFile.exists(function(err, exists, record) {
       if (exists === true && record !== 'undefined') {
-        // Check if a completed uploaded copy is already on the server as 
+        // Check if a completed uploaded copy is already on the server as
         // we don't want a duplicate copy.
         if (record.permanent === true) {
-          socket.emit('cancelUpload', { 
+          socket.emit('cancelUpload', {
             message: 'A copy of this file has already been uploaded.  Please delete the uploaded copy before proceeding.' ,
             movieId: record._id
           });
           // Exit function.
           return;
-        } 
-        
+        }
+
         // Is an existing file so get its machine name.
         movieFile.setMachineFileName(record.machineFileName);
         movieFile.setId(record._id);
@@ -230,7 +231,7 @@ io.sockets.on('connection', function (socket) {
       //Create a new Entry in The Files Variable.
       var machineName = movieFile.getMachineFileName();
       files[machineName] = movieFile;
-      
+
       // Create variable to hold value of upload starting place.
       var place = 0;
       try {
@@ -246,7 +247,7 @@ io.sockets.on('connection', function (socket) {
       catch (error) {
         // No file present? Must be a new upload.
         console.info('No file present, must be new file.');
-      } 
+      }
       fs.open("temp/" + machineName, "a", 0755, function(error, fd) {
         if (error) {
            console.log(error);
@@ -254,16 +255,16 @@ io.sockets.on('connection', function (socket) {
         else {
           // Store file handler so can be written to later.
           files[machineName].setHandler(fd);
-          // Fetch file data from client. 
-          socket.emit('moreData', { 
-            'place': place, 
-            percent: 0 
+          // Fetch file data from client.
+          socket.emit('moreData', {
+            'place': place,
+            percent: 0
           });
         }
       });
     });
   });
-  
+
   socket.on('upload', function (data) {
     // Get machine name of file.
     var machineName;
@@ -280,12 +281,12 @@ io.sockets.on('connection', function (socket) {
     // Set time of upload occurence.
     var date = new Date();
     files[machineName].setDateUploaded(date.getTime());
-    
+
     if (files[machineName].getAmountUploaded() == files[machineName].getFileSize())  {
       // File is fully uploaded.
       uploadCompleted(machineName, socket);
     }
-    else if (files[machineName].getData().length > 10485760) { 
+    else if (files[machineName].getData().length > 10485760) {
       // Data Buffer is full (has reached 10MB) proceed to write buffer to file on server.
       fs.write(files[machineName].getHandler(), files[machineName].getData(), null, 'binary', function(err, written) {
         // Record file in database.
@@ -313,7 +314,7 @@ io.sockets.on('connection', function (socket) {
             });
           }
         });
-        
+
         //Reset The Buffer
         files[machineName].setData('');
         // Get current upload position.
@@ -321,9 +322,9 @@ io.sockets.on('connection', function (socket) {
         // Get current percentage upload completed.
         var percent = (files[machineName].getAmountUploaded() / files[machineName].getFileSize()) * 100;
         // Send request to client for more file data.
-        socket.emit('moreData', { 
-          'place': place, 
-          'percent':  percent 
+        socket.emit('moreData', {
+          'place': place,
+          'percent':  percent
         });
       });
     }
@@ -334,8 +335,8 @@ io.sockets.on('connection', function (socket) {
       // Get current percentage upload completed.
       var percent = (files[machineName].getAmountUploaded() / files[machineName].getFileSize()) * 100;
       // Send request to client for more file data.
-      socket.emit('moreData', { 
-        'place': place, 
+      socket.emit('moreData', {
+        'place': place,
         'percent': percent
       });
     }
@@ -344,13 +345,17 @@ io.sockets.on('connection', function (socket) {
 
 /*
  * Routes
- */ 
+ */
 
 app.get('/', routes.index);
 
 app.get('/upload', routes.upload);
 
 app.get('/movie/:id', routes.movie);
+
+app.get('/movie/delete/:id', routes.confirmDeleteMovie);
+
+app.post('/movie/delete', routes.postDeleteMovie);
 
 app.listen(3000, function(){
   console.log("Express server listening on port %d in %s mode", app.address().port, app.settings.env);

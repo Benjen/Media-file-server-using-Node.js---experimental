@@ -27,8 +27,8 @@ a {
 	height: 134px;
 	overflow: hidden;
 }
-/* 
- * Create 3D popout effect on hover. 
+/*
+ * Create 3D popout effect on hover.
  */
 .item:hover {
   box-shadow: 6px 6px 2px grey;
@@ -47,4 +47,15 @@ ul {
 #menu li {
 	display: inline-block;
 	padding: 2px 10px;
+}
+
+.delete-movie {
+}
+
+.delete-movie a {
+  display: inline-block;
+  margin-right: 5px;
+  text-decoration: none;
+  color: #FF0000;
+  float: right;
 }
