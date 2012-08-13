@@ -1,6 +1,5 @@
 /* 
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Module to handle socket.io components of the app
  */
 
 module.exports = function(app, fs, _, util, mime) {
@@ -18,9 +17,6 @@ module.exports = function(app, fs, _, util, mime) {
   // Processes file after upload has completed.
   function uploadCompleted(machineName) {
     fs.write(files[machineName].getHandler(), files[machineName].getData(), null, 'binary', function(err, written) {
-  //    
-  //    Problem using mime-magic with Arch Linux. temp disable until can get work around.
-  //    
       mime.fileWrapper(tempdir + '/' + machineName, function(err, type) {
         if (err) {
           throw err;
@@ -96,9 +92,6 @@ module.exports = function(app, fs, _, util, mime) {
           });
         });
       });
-  //    
-  //    Problem using mime-magic with Arch Linux. temp disable until can get work around.
-  // 
     });
   }
 
