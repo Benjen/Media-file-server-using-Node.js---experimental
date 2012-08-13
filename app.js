@@ -82,24 +82,28 @@ io = require('socket.io').listen(app);
 // Processes file after upload has completed.
 function uploadCompleted(machineName) {
   fs.write(files[machineName].getHandler(), files[machineName].getData(), null, 'binary', function(err, written) {
-    // Validate file.
-    mime.fileWrapper(TEMPDIR + '/' + machineName, function(err, type) {
-      if (err) {
-        throw err;
-      }
-      var regex = /video.*/;
-      if (type.search(regex) === -1) {
-        sock.emit('cancelUpload', { message: 'Upload failed.  The uploaded file is not a valid movie file.' });
-        // Delete file.
-        // Remove record from database.
-        files[machineName].remove(function(err) {
-          if (err) {
-            throw err;
-          }
-          delete files[machineName];
-        });
-        return;
-      }
+//    
+//    Problem using mime-magic with Arch Linux. temp disable until can get work around.
+//    
+//    mime.fileWrapper(TEMPDIR + '/' + machineName, function(err, type) {
+//      if (err) {
+//        throw err;
+//      }
+//      // Validate file to confirm it is a video file.
+//      var regex = /video.*/;
+//      if (type.search(regex) === -1) {
+//        sock.emit('cancelUpload', { message: 'Upload failed.  The uploaded file is not a valid movie file.' });
+//        // Remove record from database.
+//        files[machineName].remove(function(err) {
+//          if (err) {
+//            throw err;
+//          }
+//          // Delete file.
+//          delete files[machineName];
+//        });
+//        // Exit this function.
+//        return;
+//      }
 
       // Record file in database.
       files[machineName].exists(function(error, exists, doc) {
@@ -156,7 +160,10 @@ function uploadCompleted(machineName) {
         });
       });
     });
-  });
+//    
+//    Problem using mime-magic with Arch Linux. temp disable until can get work around.
+// 
+//  });
 }
 
 // Set on connection event.

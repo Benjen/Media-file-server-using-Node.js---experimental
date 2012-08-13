@@ -426,6 +426,9 @@ var TrashCollector = function() {
     var self = this;
     // Get list of files in temp directory.
     this.files = fs.readdir(this.tempPath, function(err, files) {
+      if (err) {
+        throw err;
+      }
       if (files.length === 0) {
         // No files in temp directory so exit function.
         self.opCompleted = true;
