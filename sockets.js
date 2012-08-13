@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-module.exports = function(app, fs, _, util) {
+module.exports = function(app, fs, _, util, mime) {
   // Initialize socket.io.
   var io = require('socket.io').listen(app);
   // Holds the client-server socket used by socket.io events.
@@ -21,25 +21,25 @@ module.exports = function(app, fs, _, util) {
   //    
   //    Problem using mime-magic with Arch Linux. temp disable until can get work around.
   //    
-  //    mime.fileWrapper(TEMPDIR + '/' + machineName, function(err, type) {
-  //      if (err) {
-  //        throw err;
-  //      }
-  //      // Validate file to confirm it is a video file.
-  //      var regex = /video.*/;
-  //      if (type.search(regex) === -1) {
-  //        sock.emit('cancelUpload', { message: 'Upload failed.  The uploaded file is not a valid movie file.' });
-  //        // Remove record from database.
-  //        files[machineName].remove(function(err) {
-  //          if (err) {
-  //            throw err;
-  //          }
-  //          // Delete file.
-  //          delete files[machineName];
-  //        });
-  //        // Exit this function.
-  //        return;
-  //      }
+      mime.fileWrapper(tempdir + '/' + machineName, function(err, type) {
+        if (err) {
+          throw err;
+        }
+        // Validate file to confirm it is a video file.
+        var regex = /video.*/;
+        if (type.search(regex) === -1) {
+          sock.emit('cancelUpload', { message: 'Upload failed.  The uploaded file is not a valid movie file.' });
+          // Remove record from database.
+          files[machineName].remove(function(err) {
+            if (err) {
+              throw err;
+            }
+            // Delete file.
+            delete files[machineName];
+          });
+          // Exit this function.
+          return;
+        }
 
         // Record file in database.
         files[machineName].exists(function(error, exists, doc) {
@@ -99,7 +99,7 @@ module.exports = function(app, fs, _, util) {
   //    
   //    Problem using mime-magic with Arch Linux. temp disable until can get work around.
   // 
-  //  });
+    });
   }
 
   // Set on connection event.

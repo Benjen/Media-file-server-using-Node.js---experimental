@@ -77,7 +77,7 @@ trashCollector.init({
 /*
  * Socket.io events
  */
-require('./sockets.js')(app, fs, _, util);
+require('./sockets.js')(app, fs, _, util, mime);
 
 
 /*
