@@ -5,12 +5,33 @@
 
 var fs = require('fs');
 var mime = require('mime-magic');
+var async = require('async');
 
-mime.fileWrapper('temp/1344847170457', function(err, type) {
-    if (err) {
-      throw err;
-    }
-    else {
-        console.log('File found.');
-    }
+function pre() {
+  console.log('Pre');
+}
+
+function post() {
+  console.log('Post');
+}
+
+pre();
+async.series([
+  function(callback){
+      // do some stuff ...
+      setTimeout(function() {
+        callback(null, 1)
+      }, 4000);
+  },
+  function(callback){
+      // do some more stuff ...
+      
+      callback(null, 2);
+  },
+],
+// optional callback
+function(err, results){
+    // results is now equal to ['one', 'two']
+    console.log(results);
 });
+post();

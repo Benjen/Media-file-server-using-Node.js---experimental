@@ -1,0 +1,59 @@
+0 info it worked if it ends with ok
+1 verbose cli [ '/usr/bin/node', '/usr/bin/npm', 'install', 'async.js' ]
+2 info using npm@1.1.46
+3 info using node@v0.8.5
+4 verbose config file /home/begun/.npmrc
+5 verbose config file /usr/etc/npmrc
+6 verbose config file /usr/lib/node_modules/npm/npmrc
+7 verbose read json /home/begun/git/Media-file-server-using-Node.js---experimental/package.json
+8 verbose read json /home/begun/git/Media-file-server-using-Node.js---experimental/node_modules/step/package.json
+9 verbose read json /home/begun/git/Media-file-server-using-Node.js---experimental/node_modules/socket.io/package.json
+10 verbose read json /home/begun/git/Media-file-server-using-Node.js---experimental/node_modules/express/package.json
+11 verbose read json /home/begun/git/Media-file-server-using-Node.js---experimental/node_modules/underscore/package.json
+12 verbose read json /home/begun/git/Media-file-server-using-Node.js---experimental/node_modules/mime-magic/package.json
+13 verbose read json /home/begun/git/Media-file-server-using-Node.js---experimental/node_modules/async/package.json
+14 verbose read json /home/begun/git/Media-file-server-using-Node.js---experimental/node_modules/mongoose/package.json
+15 verbose read json /home/begun/git/Media-file-server-using-Node.js---experimental/node_modules/fluent-ffmpeg/package.json
+16 verbose read json /home/begun/git/Media-file-server-using-Node.js---experimental/node_modules/jade/package.json
+17 warn package.json fluent-ffmpeg@1.1.4 No README.md file found!
+18 warn package.json jade@0.26.3 No README.md file found!
+19 verbose from cache /home/begun/git/Media-file-server-using-Node.js---experimental/package.json
+20 verbose readDependencies using package.json deps
+21 verbose cache add [ 'async.js', null ]
+22 silly cache add name=undefined spec="async.js" args=["async.js",null]
+23 verbose parsed url { pathname: 'async.js', path: 'async.js', href: 'async.js' }
+24 silly lockFile ddc18ff5-async-js async.js
+25 verbose lock async.js /home/begun/.npm/ddc18ff5-async-js.lock
+26 silly lockFile ddc18ff5-async-js async.js
+27 verbose addNamed [ 'async.js', '' ]
+28 verbose addNamed [ null, '' ]
+29 silly lockFile 1a0dff55-async-js async.js@
+30 verbose lock async.js@ /home/begun/.npm/1a0dff55-async-js.lock
+31 silly addNameRange { name: 'async.js', range: '', hasData: false }
+32 verbose url raw async.js
+33 verbose url resolving [ 'https://registry.npmjs.org/', './async.js' ]
+34 verbose url resolved https://registry.npmjs.org/async.js
+35 info retry registry request attempt 1 at 01:08:02
+36 http GET https://registry.npmjs.org/async.js
+37 http 404 https://registry.npmjs.org/async.js
+38 silly registry.get cb [ 404,
+38 silly registry.get   { server: 'CouchDB/1.2.0 (Erlang OTP/R15B)',
+38 silly registry.get     date: 'Tue, 14 Aug 2012 04:32:35 GMT',
+38 silly registry.get     'content-type': 'application/json',
+38 silly registry.get     'content-length': '52',
+38 silly registry.get     'cache-control': 'must-revalidate' } ]
+39 silly lockFile 1a0dff55-async-js async.js@
+40 error 404 'async.js' is not in the npm registry.
+40 error 404 You should bug the author to publish it
+40 error 404
+40 error 404 Maybe try 'npm search async'
+40 error 404
+40 error 404 Note that you can also install from a
+40 error 404 tarball, folder, or http url, or git url.
+41 error System Linux 3.4.8-1-ARCH
+42 error command "/usr/bin/node" "/usr/bin/npm" "install" "async.js"
+43 error cwd /home/begun/git/Media-file-server-using-Node.js---experimental
+44 error node -v v0.8.5
+45 error npm -v 1.1.46
+46 error code E404
+47 verbose exit [ 1, true ]

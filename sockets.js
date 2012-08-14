@@ -1,8 +1,16 @@
 /* 
  * Module to handle socket.io components of the app
+ * 
+ * Requires the following modules must be passed by the app calling this module:
+ *   app - the node app itself
+ *   fs - node file system module
+ *   _ - underscore
+ *   util - node utilities module 
+ *   mime - mime-magic module
+ *   async - async module
  */
 
-module.exports = function(app, fs, _, util, mime) {
+module.exports = function(app, fs, _, util, mime, async) {
   // Initialize socket.io.
   var io = require('socket.io').listen(app);
   // Holds the client-server socket used by socket.io events.
@@ -107,98 +115,208 @@ module.exports = function(app, fs, _, util, mime) {
       var filename = data.filename;
       var date = new Date();
       var tags = data.tags.split(' ');
+      // Create variable to hold value of upload starting place.
+      var place;
       // Create instance of MovieFile object.
       var movieFile = new MovieFile({
         filesDir: filesdir,
-        tempDir: tempdir
+        tempDir: tempdir,
+        app: app
       });
-      movieFile.setName(name);
-      movieFile.setOriginalFileName(filename);
-      movieFile.setFileSize(size);
-      movieFile.setData('');
-      movieFile.setAmountUploaded(0);
-      movieFile.setDateUploaded(date.getTime());
-      // Set tags.
-  //    tag.forEach(function(item, index) {
-  //      // Check if tag already exists in database.
-  //      Tag.findOne({ title: item }, function(err, doc) {
-  //        if (err) {
-  //          throw err;
-  //        }
-  //        else {
-  //          console.log(doc);
-  //        }
-  //      });
-  //      // Save tag to database and retrieve new tag _id.
-  //    });
-      // Get the machine name for the file.
-      movieFile.exists(function(err, exists, record) {
-        if (exists === true && record !== 'undefined') {
-          // Check if a completed uploaded copy is already on the server as
-          // we don't want a duplicate copy.
-          if (record.permanent === true) {
-            socket.emit('cancelUpload', {
-              message: 'A copy of this file has already been uploaded.  Please delete the uploaded copy before proceeding.' ,
-              movieId: record._id
-            });
-            // Exit function.
-            return;
-          }
+      
+      async.series({
+        // Set movieFile properties.
+        setMovieFileProperties: function(next) {
+          console.log('movieFile set vars.');
+          movieFile.setName(name);
+          movieFile.setOriginalFileName(filename);
+          movieFile.setFileSize(size);
+          movieFile.setData('');
+          movieFile.setAmountUploaded(0);
+          movieFile.setDateUploaded(date.getTime());
+          next(null);
+        },
+        // Process tags. 
+        setTags: function(next) {
+          // Add tag values to movieFile object.
+          async.forEach(
+            tags, 
+            // Function to apply to each item.
+            function(item, done) {
+              movieFile.addTag(item, function(err) {
+                if (err) {
+                  done(err);
+                }
+                done(null);
+              })
+            }, 
+            // Function to apply after completion.
+            function(err) {
+              // Done
+              next(err);
+            }
+          );
+        },
+        // Set the machine name of the file.
+        setMachineFileName: function(next) {
+          movieFile.exists(function(err, exists, record) {
+            if (exists === true && record !== 'undefined') {
+              // Check if a completed uploaded copy is already on the server as
+              // we don't want a duplicate copy.
+              if (record.permanent === true) {
+                socket.emit('cancelUpload', {
+                  message: 'A copy of this file has already been uploaded.  Please delete the uploaded copy before proceeding.' ,
+                  movieId: record._id
+                });
+//                var error = new Error('A copy of this file already exists.');
+                next(new Error('A copy of this file already exists.'));
+                // Exit function.
+                return;
+              }
 
-          // Is an existing file so get its machine name.
-          movieFile.setMachineFileName(record.machineFileName);
-          movieFile.setId(record._id);
-          movieFile.update(function(err, data) {
-            if (err) {
-              throw err;
+              // Is an existing file so get its machine name.
+              movieFile.setMachineFileName(record.machineFileName);
+              movieFile.setId(record._id);
+              movieFile.update(function(err, data) {
+                if (err) {
+                  next(err);
+                }
+                next(null);
+              });
+            }
+            else {
+              // Is a new file so give it a machine name.
+              movieFile.createNewMachineFileName();
+              movieFile.save(function(err, data) {
+                if (err) {
+                  next(err);
+                }
+                movieFile.setId(data._id);
+                console.log(data);
+                next(null);
+              });
+            }
+          });
+        },
+        addToFilesArray: function(next) {
+          //Create a new Entry in The Files Variable.
+          var machineName = movieFile.getMachineFileName();
+          files[machineName] = movieFile;
+          next(null);
+        },
+        setUploadStats: function(next) {
+          var machineName = movieFile.getMachineFileName();
+          // Create variable to hold value of upload starting place.
+          place = 0;
+          try {
+            // Is the file already present on server.
+            var stat = fs.statSync(tempdir + '/' +  machineName);
+            if (stat.isFile()) {
+              // Update file information with size of already uploaded portion of file.
+              files[machineName].setAmountUploaded(stat.size);
+              // Set starting place for continuation of uploading.
+              place = stat.size / 524288;
+            }
+          }
+          catch (error) {
+            // No file present? Must be a new upload.
+            console.info('No file present, must be new file.');
+          }
+          next(null);
+        },
+        setFileHandler: function(next) {
+          var machineName = movieFile.getMachineFileName();
+          fs.open('temp' + '/' + machineName, "a", 0755, function(error, fd) {
+            if (error) {
+               next(err)
+            }
+            else {
+              // Store file handler so can be written to later.
+              files[machineName].setHandler(fd);
+              // Fetch file data from client.
+              socket.emit('moreData', {
+                'place': place,
+                percent: 0
+              });
+              next(null);
             }
           });
         }
-        else {
-          // Is a new file so give it a machine name.
-          movieFile.createNewMachineFileName();
-          movieFile.save(function(err, data) {
-            if (err) {
-              throw error;
-            }
-            movieFile.setId(data._id);
-          });
+      },
+      function(err, results) {
+        // Async series block completed.
+        if (err) {
+//          throw err;
         }
-        //Create a new Entry in The Files Variable.
-        var machineName = movieFile.getMachineFileName();
-        files[machineName] = movieFile;
-
-        // Create variable to hold value of upload starting place.
-        var place = 0;
-        try {
-          // Is the file already present on server.
-          var stat = fs.statSync(tempdir + '/' +  machineName);
-          if (stat.isFile()) {
-            // Update file information with size of already uploaded portion of file.
-            files[machineName].setAmountUploaded(stat.size);
-            // Set starting place for continuation of uploading.
-            place = stat.size / 524288;
-          }
-        }
-        catch (error) {
-          // No file present? Must be a new upload.
-          console.info('No file present, must be new file.');
-        }
-        fs.open('temp' + '/' + machineName, "a", 0755, function(error, fd) {
-          if (error) {
-             console.log(error);
-          }
-          else {
-            // Store file handler so can be written to later.
-            files[machineName].setHandler(fd);
-            // Fetch file data from client.
-            socket.emit('moreData', {
-              'place': place,
-              percent: 0
-            });
-          }
-        });
       });
+//      // Get the machine name for the file.
+//      movieFile.exists(function(err, exists, record) {
+//        if (exists === true && record !== 'undefined') {
+//          // Check if a completed uploaded copy is already on the server as
+//          // we don't want a duplicate copy.
+//          if (record.permanent === true) {
+//            socket.emit('cancelUpload', {
+//              message: 'A copy of this file has already been uploaded.  Please delete the uploaded copy before proceeding.' ,
+//              movieId: record._id
+//            });
+//            // Exit function.
+//            return;
+//          }
+//
+//          // Is an existing file so get its machine name.
+//          movieFile.setMachineFileName(record.machineFileName);
+//          movieFile.setId(record._id);
+//          movieFile.update(function(err, data) {
+//            if (err) {
+//              throw err;
+//            }
+//          });
+//        }
+//        else {
+//          // Is a new file so give it a machine name.
+//          movieFile.createNewMachineFileName();
+//          movieFile.save(function(err, data) {
+//            if (err) {
+//              throw error;
+//            }
+//            movieFile.setId(data._id);
+//          });
+//        }
+//        //Create a new Entry in The Files Variable.
+//        var machineName = movieFile.getMachineFileName();
+//        files[machineName] = movieFile;
+//
+//        // Create variable to hold value of upload starting place.
+//        var place = 0;
+//        try {
+//          // Is the file already present on server.
+//          var stat = fs.statSync(tempdir + '/' +  machineName);
+//          if (stat.isFile()) {
+//            // Update file information with size of already uploaded portion of file.
+//            files[machineName].setAmountUploaded(stat.size);
+//            // Set starting place for continuation of uploading.
+//            place = stat.size / 524288;
+//          }
+//        }
+//        catch (error) {
+//          // No file present? Must be a new upload.
+//          console.info('No file present, must be new file.');
+//        }
+//        fs.open('temp' + '/' + machineName, "a", 0755, function(error, fd) {
+//          if (error) {
+//             console.log(error);
+//          }
+//          else {
+//            // Store file handler so can be written to later.
+//            files[machineName].setHandler(fd);
+//            // Fetch file data from client.
+//            socket.emit('moreData', {
+//              'place': place,
+//              percent: 0
+//            });
+//          }
+//        });
+//      });
     });
 
     socket.on('upload', function (data) {

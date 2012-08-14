@@ -71,12 +71,15 @@ exports.movie = function(req, res) {
 //      res.send('No record found.', 505);
 //    }
     else {
+      console.log(doc);
+      console.log(req.params);
       res.render('movie', {
         locals: {
           title: 'Watch Movie',
           movie: {
             title: doc.name,
-            file: req.params.movieFileName
+            file: doc.machineFileName,
+            tags: doc.tags.join(', ')
           }
         }
       });

@@ -31,7 +31,7 @@ function defineModels(mongoose, fn) {
     'viewed': Number,
     'uid': String,
     'flags': [],
-    'tags': []
+    'tags': [Schema.ObjectId]
   }, { strict: true });
   
   mongoose.model('Movie', Movie);

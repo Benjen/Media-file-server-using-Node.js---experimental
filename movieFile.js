@@ -6,7 +6,13 @@ var fs = require('fs');
 var mongoose = require('mongoose');
 
 function MovieFile(options) {
-  var Movie = mongoose.model('Movie');
+//  var Movie = mongoose.model('Movie');
+//  var Tag = mongoose.model('Tag');
+//  var Movie;
+//  var Tag;
+  var Movie = options.app.Movie;
+  var Tag = options.app.Tag;
+  
   this.id;
   this.name;
   this.data;
@@ -19,6 +25,7 @@ function MovieFile(options) {
 //  this.Movie = mongoose.model('Movie');
   this.originalFileName;
   this.permanent = false;
+  this.tags = new Array();
   this.tempDir;
   
   /**
@@ -36,6 +43,9 @@ function MovieFile(options) {
     this.tempDir = options.tempDir;
   })();
 
+  this.addTagId = function(id) {
+    this.tags.push(id);
+  };
  
   /**
    * Create a new machine file name based on timestamp
@@ -172,6 +182,50 @@ function MovieFile(options) {
     }
     this.permanent = value;
   };
+};
+
+/**
+ * Add tag to movie file
+ * 
+ * Adds the _id of the tag to the movie file. If the tag doesn't exist in the 
+ * tag database, then a new one shall be created.
+ */
+MovieFile.prototype.addTag = function(tagText, next) {
+  var self = this;
+  
+  // Validate tag text.
+  if (typeof tagText !== 'string' || tagText.trim() === '') {
+    // Non valid tag so exit this function. Not considered error, hence no error 
+    // passed to next();
+    next(null);
+    return;
+  }
+  
+  // Check if tag already exists in database.
+  Tag.findOne({ title: tagText }, function(err, doc) {
+    if (err) {
+      // Error occured.
+      next(err);
+    }
+    else if (doc !== null) {
+      // Tag exists so add tag id to movieFile.
+      self.tags.push(doc._id);
+      next(null);
+    }
+    else {
+      // Tag does not exists, so create new tag.
+      var tag = new Tag({ title: tagText });
+      tag.save(function(err, data) {
+        if (err) {
+          next(err);
+        }
+        else {
+          self.tags.push(data._id);
+          next(null);
+        }
+      });
+    }
+  });
 };
 
 /**
@@ -322,7 +376,7 @@ MovieFile.prototype.save = function(next) {
     viewed: 0,
     uid: 0,
     flags: [],
-    tags: []
+    tags: this.tags
   };
   var movie = new Movie(values);
   movie.save(function(err, data) {
@@ -343,35 +397,35 @@ MovieFile.prototype.save = function(next) {
  */
 MovieFile.prototype.update = function(next) {
   if (typeof this.id === 'undefined') {
-    var error = new Error('Cannot complete MovieFile.updage as MovieFile.id is not defined.');
+    var error = new Error('Cannot complete MovieFile.update as MovieFile.id is not defined.');
     next(error, undefined);
   }
   else {
     var conditions = { _id: this.id };
     var values = {
 //        _id: this.getId(),
-        name: this.getName(),
-        machineFileName: this.getMachineFileName(),
-        originalFileName: this.getOriginalFileName(),
-        size: this.getFileSize(),
-        type: 'unknown',
-        dateUploaded: this.getDateUploaded(),
-        amountUploaded: this.getAmountUploaded(),
-        permanent: this.getPermanent(),
-        viewed: 0,
-        uid: 0,
-        flags: [],
-        tags: []
-      };
-      var options = {};
-      Movie.update(conditions, values, options, function(err, data) {
-        if (err) {
-          next(err, data);
-        }
-        else {
-          next(null, data);
-        }
-      });
+      name: this.getName(),
+      machineFileName: this.getMachineFileName(),
+      originalFileName: this.getOriginalFileName(),
+      size: this.getFileSize(),
+      type: 'unknown',
+      dateUploaded: this.getDateUploaded(),
+      amountUploaded: this.getAmountUploaded(),
+      permanent: this.getPermanent(),
+      viewed: 0,
+      uid: 0,
+      flags: [],
+      tags: []
+    };
+    var options = {};
+    Movie.update(conditions, values, options, function(err, data) {
+      if (err) {
+        next(err, data);
+      }
+      else {
+        next(null, data);
+      }
+    });
   }
 };
 
