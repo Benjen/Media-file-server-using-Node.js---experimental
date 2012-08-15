@@ -36,11 +36,12 @@ function defineModels(mongoose, async, fn) {
     'tags': [ObjectId]
   }, { strict: true });
   
-//  Movie.pre('save', function(next) {
-//    console.log('*** Pre save ***');
-//    next();
-//  });
-  
+  /**
+   * Delete associated tags if they are not attached to any other movies prior 
+   * to deleting the current movie
+   * 
+   * Prevents orphaned tags appearing in the system.
+   */
   Movie.pre('remove', function(next) {
     console.log('*** Pre remove ***');
     var self = this;
