@@ -114,7 +114,7 @@ module.exports = function(app, fs, _, util, mime, async) {
       var size = data.fileSize;
       var filename = data.filename;
       var date = new Date();
-      var tags = data.tags.split(' ');
+      var tags = data.tags.split(',');
       // Create variable to hold value of upload starting place.
       var place;
       // Create instance of MovieFile object.

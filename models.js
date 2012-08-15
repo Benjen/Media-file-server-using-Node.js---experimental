@@ -10,6 +10,8 @@ function defineModels(mongoose, fn) {
    * Model - User
    */
   User = new Schema({
+    // TODO: probably better off using a virtual for uid, since it is the same 
+    // as _id.
     'uid': ObjectId,
     'name': String
   }, { strict: true });
@@ -31,7 +33,7 @@ function defineModels(mongoose, fn) {
     'viewed': Number,
     'uid': String,
     'flags': [],
-    'tags': [Schema.ObjectId]
+    'tags': [ObjectId]
   }, { strict: true });
   
   mongoose.model('Movie', Movie);

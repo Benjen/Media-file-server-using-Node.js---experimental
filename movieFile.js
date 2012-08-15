@@ -193,8 +193,11 @@ function MovieFile(options) {
 MovieFile.prototype.addTag = function(tagText, next) {
   var self = this;
   
+  // Trim any whitespace.
+  tagText = tagText.trim();
+  
   // Validate tag text.
-  if (typeof tagText !== 'string' || tagText.trim() === '') {
+  if (typeof tagText !== 'string' || tagText === '') {
     // Non valid tag so exit this function. Not considered error, hence no error 
     // passed to next();
     next(null);
@@ -363,6 +366,7 @@ MovieFile.prototype.retrieveMachineFileName = function(filename, filesize, next)
  * Save record of movie file to database
  */
 MovieFile.prototype.save = function(next) {
+  console.log('MovieFile.save()');
   // save movie to database.
   var values = {
     name: this.getName(),
@@ -396,6 +400,7 @@ MovieFile.prototype.save = function(next) {
  *   Function to call after completing this operation.
  */
 MovieFile.prototype.update = function(next) {
+  console.log('MovieFile.update()');
   if (typeof this.id === 'undefined') {
     var error = new Error('Cannot complete MovieFile.update as MovieFile.id is not defined.');
     next(error, undefined);
@@ -415,7 +420,7 @@ MovieFile.prototype.update = function(next) {
       viewed: 0,
       uid: 0,
       flags: [],
-      tags: []
+      tags: this.tags
     };
     var options = {};
     Movie.update(conditions, values, options, function(err, data) {
