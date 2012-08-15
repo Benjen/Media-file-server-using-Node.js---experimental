@@ -51,7 +51,7 @@ app.configure('production', function(){
  * Database models
  */
 
-models.defineModels(mongoose, function() {
+models.defineModels(mongoose, async, function() {
   app.User = User = mongoose.model('User');
   app.Movie = Movie = mongoose.model('Movie');
   app.Tag = Tag = mongoose.model('Tag');

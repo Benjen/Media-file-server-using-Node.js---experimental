@@ -107,7 +107,7 @@ exports.postDeleteMovie = function(req, res) {
         var filePath = filesDir + '/' + fileName;
         var thumbnailPath = filesDir + '/' + fileName + '_thumb.jpg';
         // Delete movie from database.
-        Movie.remove({ _id: doc._id }, function(err, result) {
+        doc.remove(function(err, result) {
           if (err) {
             throw err;
           }
@@ -118,6 +118,7 @@ exports.postDeleteMovie = function(req, res) {
           if (fs.existsSync(thumbnailPath)) {
             fs.unlinkSync(thumbnailPath);
           }
+          console.log('*** File deleted. ***');
           // Redirect to front page.
           res.redirect('/', 302);
         });

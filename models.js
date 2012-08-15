@@ -2,7 +2,7 @@
  * Mongo database models
  */
 
-function defineModels(mongoose, fn) {
+function defineModels(mongoose, async, fn) {
   var Schema = mongoose.Schema,
       ObjectId = Schema.ObjectId;
 
@@ -35,6 +35,43 @@ function defineModels(mongoose, fn) {
     'flags': [],
     'tags': [ObjectId]
   }, { strict: true });
+  
+//  Movie.pre('save', function(next) {
+//    console.log('*** Pre save ***');
+//    next();
+//  });
+  
+  Movie.pre('remove', function(next) {
+    console.log('*** Pre remove ***');
+    var self = this;
+    async.forEach(
+      this.tags,
+      function(id, done) {
+        console.log(id);
+        mongoose.models['Movie'].find({ tags: id }, function(err, docs) {
+          if (docs.length === 1 && self._id.equals(docs[0]._id)) {
+            // Remove tag.
+            mongoose.models['Tag'].remove({ _id: id }, function(err, result) {
+              if (err) {
+                done(err);
+              }
+              else {
+                console.log('Tag removed.');
+                done(null);
+              }
+            });
+          }
+          else {
+            console.log('No tags to remove.');
+            done(null);
+          }
+        });  
+      },
+      function(err) {
+        next(err);
+      }
+    );
+  });
   
   mongoose.model('Movie', Movie);
  

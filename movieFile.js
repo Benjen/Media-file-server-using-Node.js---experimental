@@ -366,7 +366,6 @@ MovieFile.prototype.retrieveMachineFileName = function(filename, filesize, next)
  * Save record of movie file to database
  */
 MovieFile.prototype.save = function(next) {
-  console.log('MovieFile.save()');
   // save movie to database.
   var values = {
     name: this.getName(),
@@ -400,7 +399,6 @@ MovieFile.prototype.save = function(next) {
  *   Function to call after completing this operation.
  */
 MovieFile.prototype.update = function(next) {
-  console.log('MovieFile.update()');
   if (typeof this.id === 'undefined') {
     var error = new Error('Cannot complete MovieFile.update as MovieFile.id is not defined.');
     next(error, undefined);
