@@ -44,6 +44,9 @@ a {
 }
 ul {
 	position: relative;
+  list-style-position: outside;
+  padding: 0;
+  margin: 0;
 }
 #menu li {
 	display: inline-block;
@@ -65,20 +68,17 @@ ul {
   display: inline-block;
   margin-right: 10px;
   border-radius: 4px;
+  background-color: #fed22f;
 }
 
 a.tag {
   display: inline-block;
   padding: 3px 10px 3px 10px;
-  background-color: #fed22f;
-  border-radius: 4px 0 0 4px;
 }
 
 a.edit-tag {
   display: inline-block;
   padding: 3px 0 3px 0;
-  background-color: #fed22f;
-  border-radius: 0 4px 4px 0;
   heigth: 100%;
   width: 16px;
   text-indent: -9999px;
@@ -94,4 +94,7 @@ a.edit-tag:hover {
   background-color: #dedede;
   padding: 2px 10px;
   margin: 5px 0;
+}
+.tags {
+  margin-top: 20px;
 }

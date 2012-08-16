@@ -78,31 +78,33 @@ exports.confirmDeleteMovie = function(req, res) {
  */
 exports.movie = function(req, res) {
   var Movie = mongoose.model('Movie');
-  Movie.findById(req.params.id, function(err, doc) {
-    console.log(err);
-    if (err) {
-      throw err;
-      // TODO: rather than throwing error which crashes the program, why not 
-      // have a nice little page to tell people something didn't go right. Of 
-      // course one would need to consider what kind of information to show, as 
-      // it might aid would be hackers. Not something we want.
-//      res.render('error', {
-//        locals: {
-//          title: 'Error',
-//          msg: 'Looks like something went wrong. If this problem happens a lot, then you might want to tell your technical person about it.',
-//          details: err
-//        }
-//      });
-    }
-    else {
-      res.render('movie', {
-        locals: {
-          title: 'Watch Movie',
-          movie: doc
-        }
-      });
-    }
-  });
+  Movie.findById(req.params.id)
+    .populate('tags')
+    .exec(function(err, doc) {
+      if (err) {
+        throw err;
+        // TODO: rather than throwing error which crashes the program, why not 
+        // have a nice little page to tell people something didn't go right. Of 
+        // course one would need to consider what kind of information to show, as 
+        // it might aid would be hackers. Not something we want.
+//        res.render('error', {
+//          locals: {
+//            title: 'Error',
+//            msg: 'Looks like something went wrong. If this problem happens a lot, then you might want to tell your technical person about it.',
+//            details: err
+//          }
+//        });
+      }
+      else {
+        console.log(doc);
+        res.render('movie', {
+          locals: {
+            title: 'Watch Movie',
+            movie: doc
+          }
+        });
+      }
+    });
 }
 
 /**

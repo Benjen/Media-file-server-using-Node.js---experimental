@@ -10,10 +10,8 @@ function defineModels(mongoose, async, fn) {
    * Model - User
    */
   User = new Schema({
-    // TODO: probably better off using a virtual for uid, since it is the same 
-    // as _id.
-    'uid': ObjectId,
-    'name': String
+    'name': String,
+    'password': String
   }, { strict: true });
   
   mongoose.model('User', User);
@@ -21,44 +19,6 @@ function defineModels(mongoose, async, fn) {
   /**
    * Model - Movie
    */
-
-  /**
-   * Getter function
-   * 
-   * Gets tag text as well as tag ObjectId.
-   */
-  function getTagNames(tags) {
-//    var newArray = new Array();
-//    async.forEach(
-//      tags,
-//      function(id, done) {
-//        mongoose.models['Tag'].findOne({ _id: id }, function(err, doc) {
-//          if (err) {
-//            done(err);
-//          }
-//          else if (doc) {
-//            newArray.push(doc);
-//            done(null);
-//          }
-//          else {
-//            console.log(doc);
-//            // Just incase something weird like no document is found.  
-//            // Technically this condition should not occur in reality. But we 
-//            // put something here to catch it just in case.
-//            done(new Error('No tag document found.'));
-//          }
-//        });
-//      },
-//      function(err) {
-//        if (err) {
-//          throw err;
-//        }
-//        console.log(newArray);
-//        return newArray;
-//      }
-//    );
-    return tags;
-  }
 
   /**
    * Define schema
@@ -81,10 +41,10 @@ function defineModels(mongoose, async, fn) {
     'viewed': Number,
     'uid': String,
     'flags': [],
-    'tags': {
-      type: Array, 
-      get: getTagNames
-    }
+    'tags': [{
+      type: ObjectId, 
+      ref: 'Tag'
+    }]
 //    'tags': [ObjectId]
   }, { strict: true });
   
