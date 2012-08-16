@@ -21,19 +21,71 @@ function defineModels(mongoose, async, fn) {
   /**
    * Model - Movie
    */
+
+  /**
+   * Getter function
+   * 
+   * Gets tag text as well as tag ObjectId.
+   */
+  function getTagNames(tags) {
+//    var newArray = new Array();
+//    async.forEach(
+//      tags,
+//      function(id, done) {
+//        mongoose.models['Tag'].findOne({ _id: id }, function(err, doc) {
+//          if (err) {
+//            done(err);
+//          }
+//          else if (doc) {
+//            newArray.push(doc);
+//            done(null);
+//          }
+//          else {
+//            console.log(doc);
+//            // Just incase something weird like no document is found.  
+//            // Technically this condition should not occur in reality. But we 
+//            // put something here to catch it just in case.
+//            done(new Error('No tag document found.'));
+//          }
+//        });
+//      },
+//      function(err) {
+//        if (err) {
+//          throw err;
+//        }
+//        console.log(newArray);
+//        return newArray;
+//      }
+//    );
+    return tags;
+  }
+
+  /**
+   * Define schema
+   */
   Movie = new Schema({
     'name': String,
     'machineFileName': String,
     'originalFileName': String,
     'size': Number,
     'type': String,
-    'permanent': { type: Boolean, default: false },
+    'permanent': { 
+      type: Boolean, 
+      default: false 
+    },
     'dateUploaded': Date,
-    'amountUploaded': { type: Number, default: 0 },
+    'amountUploaded': {
+      type: [], 
+      default: 0 
+    },
     'viewed': Number,
     'uid': String,
     'flags': [],
-    'tags': [ObjectId]
+    'tags': {
+      type: Array, 
+      get: getTagNames
+    }
+//    'tags': [ObjectId]
   }, { strict: true });
   
   /**
@@ -43,7 +95,6 @@ function defineModels(mongoose, async, fn) {
    * Prevents orphaned tags appearing in the system.
    */
   Movie.pre('remove', function(next) {
-    console.log('*** Pre remove ***');
     var self = this;
     async.forEach(
       this.tags,

@@ -5,6 +5,21 @@
 // Load required libraries.
 var mongoose = require('mongoose');
 var fs = require('fs');
+var _ = require('underscore');
+
+/*
+ * Error page
+ */
+exports.error = function(req, res) {
+  var errorMessage = 'Oops, looks like something went wrong.';
+  res.render('error', {
+    locals: {
+      title: 'Error',
+      msg: errorMessage
+    }
+  });
+};
+
 
 /*
  * Movie upload page
@@ -64,28 +79,58 @@ exports.confirmDeleteMovie = function(req, res) {
 exports.movie = function(req, res) {
   var Movie = mongoose.model('Movie');
   Movie.findById(req.params.id, function(err, doc) {
+    console.log(err);
     if (err) {
-      res.send('An error occured.', 500);
+      throw err;
+      // TODO: rather than throwing error which crashes the program, why not 
+      // have a nice little page to tell people something didn't go right. Of 
+      // course one would need to consider what kind of information to show, as 
+      // it might aid would be hackers. Not something we want.
+//      res.render('error', {
+//        locals: {
+//          title: 'Error',
+//          msg: 'Looks like something went wrong. If this problem happens a lot, then you might want to tell your technical person about it.',
+//          details: err
+//        }
+//      });
     }
-//    else if (doc === null) {
-//      res.send('No record found.', 505);
-//    }
     else {
-      console.log(doc);
-      console.log(req.params);
       res.render('movie', {
         locals: {
           title: 'Watch Movie',
-          movie: {
-            title: doc.name,
-            file: doc.machineFileName,
-            tags: doc.tags.join(', ')
-          }
+          movie: doc
         }
       });
     }
   });
 }
+
+/**
+ * View movies filtered by tag
+ */
+exports.movieByTag = function(req, res) {
+  console.log('*** moviebytag ***');
+  console.log(req.params.id);
+  var Movie = mongoose.model('Movie');
+  var ObjectId = mongoose.Types.ObjectId;
+  Movie
+    .find({ tags: new ObjectId(req.params.id) })
+    .sort('name', -1)
+    .exec(function(err, docs) {
+      if (err) {
+        throw err;
+      }
+      else {
+        console.log(docs);
+        res.render('movies', {
+          locals: {
+            title: 'Movies by Tag',
+            movies: docs
+          }
+        });
+      }
+    });
+};
 
 /**
  * Delete a movie
@@ -129,4 +174,25 @@ exports.postDeleteMovie = function(req, res) {
     // Redirect to front page.
     res.redirect('/', 302);
   }
+};
+
+/**
+ * Display list of tags
+ */
+exports.showTags = function(req, res) {
+  var Tag = mongoose.model('Tag');
+  Tag
+    .find()
+    .sort('title', 1)
+    .exec(function(err, docs) {
+      if (err) {
+        throw err;
+      }
+      res.render('tags', {
+        locals: {
+          title: 'tags',
+          tags: docs
+        }
+      });
+    });
 };

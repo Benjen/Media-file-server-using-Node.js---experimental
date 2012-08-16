@@ -1,12 +1,12 @@
 h1= title
 include includes/menu
 #movie
-  div= movie.title
-  div= movie.file
+  div= movie.name
+  div= movie.size
   div= movie.tags
   object(classid="clsid:02BF25D5-8C17-4B23-BC80-D3488ABDDC6B", width="320", height="180", codebase="http://www.apple.com/qtactivex/qtplugin.cab")
     //-
-      param(name="src" value="files/movie.mov")
+      param(name="src" value="http://media:8080/files/#{movie.machineFileName}")
       param(name="autoplay", value="true")
       param(name="controller", value="false")
-    embed(src="files/#{movie.file}", width="320", height="180", autoplay="true", controller="false", pluginspage="http://www.apple.com/quicktime/download/")
+    embed(src="http://media:8080/files/#{movie.machineFileName}", width="320", height="180", autoplay="true", controller="false", pluginspage="http://www.apple.com/quicktime/download/")

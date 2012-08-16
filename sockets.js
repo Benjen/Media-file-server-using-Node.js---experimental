@@ -127,7 +127,6 @@ module.exports = function(app, fs, _, util, mime, async) {
       async.series({
         // Set movieFile properties.
         setMovieFileProperties: function(next) {
-          console.log('movieFile set vars.');
           movieFile.setName(name);
           movieFile.setOriginalFileName(filename);
           movieFile.setFileSize(size);

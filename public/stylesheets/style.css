@@ -59,3 +59,33 @@ ul {
   color: #FF0000;
   float: right;
 }
+
+.tag-wrapper {
+  display: inline-block;
+  padding: 4px;
+  border-radius: 3px;
+  background-color: #fed22f;
+  border-color: #666666;
+  margin: 0 3px;
+}
+
+.tag-name {
+  display: inline-block;
+  margin-right: 10px;
+}
+
+.edit-tag {
+  display: inline-block;
+}
+
+.remove-tag {
+  display: inline-block;
+}
+
+.error-details {
+  display: inline-block;
+  border: 1px solid #999999;
+  background-color: #dedede;
+  padding: 2px 10px;
+  margin: 5px 0;
+}
