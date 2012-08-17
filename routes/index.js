@@ -7,6 +7,7 @@ var mongoose = require('mongoose');
 var fs = require('fs');
 var _ = require('underscore');
 var url = require('url');
+var media = require('../media.js');
 
 /*
  * Error page
@@ -40,13 +41,15 @@ exports.upload = function(req, res) {
 exports.index = function(req, res) {
   // Get movies in database.
   var Movie = mongoose.model('Movie');
+  var currentUri = '';
+
   Movie.find({ permanent: true }, function(err, docs) {
     // Render content.
-    res.render('index', {
+    res.render('movies', {
       locals: {
-        title: 'Media Server',
+        title: 'Welcome to Media Server',
         movies: docs,
-        prev: encodeURI(url.parse(req.url).path)
+        currentUri: currentUri
       },
       status: 200
     });
@@ -57,11 +60,11 @@ exports.index = function(req, res) {
  * Confirm movie delete
  */
 exports.confirmDeleteMovie = function(req, res) {
-  var movieId = req.params.id;
+  var movieId = req.params.movieId;
   // Get url of previous page.
-  var prev = decodeURI(req.query.prev);
-  console.log(prev);
+  var currentUri = decodeURI(req.query.prev);
   var Movie = mongoose.model('Movie');
+
   Movie.findOne({ _id: movieId }, function(err, doc) {
     if (err) {
       throw err;
@@ -72,8 +75,9 @@ exports.confirmDeleteMovie = function(req, res) {
           title: 'Delete ' + doc.name,
           _id: movieId,
           movietitle: doc.name,
-          prev: prev
-        }
+          currentUri: currentUri
+        },
+        status: 200
       });
     }
   });
@@ -84,7 +88,9 @@ exports.confirmDeleteMovie = function(req, res) {
  */
 exports.movie = function(req, res) {
   var Movie = mongoose.model('Movie');
-  Movie.findById(req.params.id)
+  var currentUri = encodeURI(url.parse(req.url).path);
+  
+  Movie.findById(req.params.movieId)
     .populate('tags')
     .exec(function(err, doc) {
       if (err) {
@@ -108,9 +114,9 @@ exports.movie = function(req, res) {
           locals: {
             title: 'Watch Movie',
             movie: doc,
-            prev: encodeURI(url.parse(req.url).path)
-//            prev: url.parse(req.url).path
-          }
+            currentUri: currentUri
+          },
+          status: 200
         });
       }
     });
@@ -120,24 +126,37 @@ exports.movie = function(req, res) {
  * View movies filtered by tag
  */
 exports.movieByTag = function(req, res) {
-  console.log('*** moviebytag ***');
-  console.log(req.params.id);
   var Movie = mongoose.model('Movie');
   var ObjectId = mongoose.Types.ObjectId;
+  var currentUri = encodeURI(url.parse(req.url).path);
+  var tagId = req.params.tagId;
+  var tag;
+  
   Movie
-    .find({ tags: new ObjectId(req.params.id) })
+    .find({ tags: new ObjectId(tagId) })
+    .populate('tags')
     .sort('name', -1)
     .exec(function(err, docs) {
       if (err) {
         throw err;
       }
       else {
-        console.log(docs);
+        // Get tag name. Since all documents in the array docs contain the tag 
+        // in question, one can just extract the tag name from the first one.
+        tag = _.find(docs[0].tags, function(item) {
+          console.log(typeof item);
+          console.log(typeof tagId);
+          if (item._id.toString() === tagId) {
+            return true;
+          }
+        });
+
+        // Render view.
         res.render('movies', {
           locals: {
-            title: 'Movies by Tag',
+            title: 'Movies by \'' + tag.title + '\'',
             movies: docs,
-            prev: encodeURI(url.parse(req.url).path)
+            currentUri: currentUri
           }
         });
       }
@@ -151,7 +170,7 @@ exports.postDeleteMovie = function(req, res) {
   // Get path the files directory.
   var filesDir = req.app.settings.FILESDIR;
   // Get URI of previous page.
-  var prev = req.body.prev;
+  var prev = req.body.prevPage;
 
   if (req.body.submit === 'Delete') {
     var Movie = mongoose.model('Movie');
@@ -178,15 +197,29 @@ exports.postDeleteMovie = function(req, res) {
             fs.unlinkSync(thumbnailPath);
           }
           console.log('*** File deleted. ***');
-          // Redirect to front page.
+          // Redirect to previous page.
+          
+          // If previous page URI is either '/movie/tag/:tagId/movie/:movieId' or 
+          // '/movie/:movieId', then the page no longer exists, in which case we mush 
+          // redirect the usr to one page up in the heirarchy.
+          var regexPattern1 = /^\/movie\/tag\/(?:([^\/]+?))\/movie\/(?:([^\/]+?))\/?$/i;
+          var regexPattern2 = /^\/movie\/(?:([^\/]+?))\/?$/i;
+          if (regexPattern1.test(prev) || regexPattern2.test(prev)) {
+            var params = prev.split('/');
+            params = params.slice(0, params.length - 2);
+            prev = params.join('/');
+            console.log(prev);
+          }
+          
           res.redirect(prev, 302);
         });
       }
     });
   }
   else {
-    // Redirect to front page.
-    res.redirect(req.body.prevPage, 302);
+    // Redirect to previous page.
+    console.log(prev);
+    res.redirect(prev, 302);
   }
 };
 

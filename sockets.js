@@ -1,7 +1,7 @@
 /* 
  * Module to handle socket.io components of the app
  * 
- * Requires the following modules must be passed by the app calling this module:
+ * Requires the following modules to be passed as arguments:
  *   app - the node app itself
  *   fs - node file system module
  *   _ - underscore

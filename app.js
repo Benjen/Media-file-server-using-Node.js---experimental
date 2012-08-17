@@ -7,6 +7,7 @@ var async = require('async')
   , exec = require('child_process').exec
   , express = require('express')
   , fs = require('fs')
+  , media = require('./media.js')
   , mime = require('mime-magic')
   , models = require('./models')
   , mongoose = require('mongoose')

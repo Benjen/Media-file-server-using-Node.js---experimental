@@ -10,12 +10,16 @@ module.exports = function(app, routes) {
 
   app.get('/upload', routes.upload);
 
-  app.get('/movie/:id', routes.movie);
+  app.get('/movie/tag/:tagId', routes.movieByTag);
   
-  app.get('/movie/tag/:id', routes.movieByTag);
+  app.get('/movie/tag/:tagId/movie/:movieId/delete', routes.confirmDeleteMovie);
+  
+  app.get('/movie/tag/:tagId/movie/:movieId', routes.movie);
 
-  app.get('/movie/:id/delete', routes.confirmDeleteMovie);
+  app.get('/movie/:movieId/delete', routes.confirmDeleteMovie);
 
+  app.get('/movie/:movieId', routes.movie);
+  
   app.post('/movie/delete', routes.postDeleteMovie);
   
   app.get('/tags', routes.showTags);
