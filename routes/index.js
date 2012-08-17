@@ -167,10 +167,12 @@ exports.movieByTag = function(req, res) {
  * Delete a movie
  */
 exports.postDeleteMovie = function(req, res) {
+  console.log('postdeletemovie');
   // Get path the files directory.
   var filesDir = req.app.settings.FILESDIR;
   // Get URI of previous page.
   var prev = req.body.prevPage;
+  console.log(prev);
 
   if (req.body.submit === 'Delete') {
     var Movie = mongoose.model('Movie');
@@ -196,21 +198,31 @@ exports.postDeleteMovie = function(req, res) {
           if (fs.existsSync(thumbnailPath)) {
             fs.unlinkSync(thumbnailPath);
           }
-          console.log('*** File deleted. ***');
           // Redirect to previous page.
           
-          // If previous page URI is either '/movie/tag/:tagId/movie/:movieId' or 
-          // '/movie/:movieId', then the page no longer exists, in which case we mush 
-          // redirect the usr to one page up in the heirarchy.
-          var regexPattern1 = /^\/movie\/tag\/(?:([^\/]+?))\/movie\/(?:([^\/]+?))\/?$/i;
-          var regexPattern2 = /^\/movie\/(?:([^\/]+?))\/?$/i;
-          if (regexPattern1.test(prev) || regexPattern2.test(prev)) {
+          // If previous page URI is either '/movie/tag/:tagId/movie/:movieId', 
+          // '/movie/:movieId' or '/movie/tag/:tadId', then the page no longer 
+          // exists after deleting the movie. In this case we mush redirect to 
+          // one page up in the heirarchy.
+          var regexPattern1 = /^\/movie\/tag\/[a-z0-9]{24}\/movie\/[a-z0-9]{24}$/i;
+          var regexPattern2 = /^\/movie\/[a-z0-9]{24}$/i;
+          var regexPattern3 = /^\/movie\/tag\/[a-z0-9]{24}$/i;
+          if (regexPattern1.test(prev) || regexPattern2.test(prev) || regexPattern3.test(prev)) {
+            // If this next page up in the heirarchy is filtered by tag, then 
+            // must confirm if the tag still exists now that the current 
+            // document has been removed.
+            if (regexPattern1.test(prev) || regexPattern3.test(prev)) {
+              if (doc.tagRemoved) {
+                // Tag no longer in system so return to home page.
+                res.redirect('/', 302);
+                return;
+              }
+            }
+            // Modify URI to point to next page up in heirarchy.
             var params = prev.split('/');
             params = params.slice(0, params.length - 2);
             prev = params.join('/');
-            console.log(prev);
           }
-          
           res.redirect(prev, 302);
         });
       }
@@ -218,7 +230,6 @@ exports.postDeleteMovie = function(req, res) {
   }
   else {
     // Redirect to previous page.
-    console.log(prev);
     res.redirect(prev, 302);
   }
 };

@@ -69,6 +69,9 @@ function defineModels(mongoose, async, fn) {
               }
               else {
                 console.log('Tag removed.');
+                // Create a variable which can be used later to check if the tag
+                //  was removed.
+                self.tagRemoved = true;
                 done(null);
               }
             });
