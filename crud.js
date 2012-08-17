@@ -5,6 +5,7 @@
  */
 
 module.exports = function(app, routes) {
+
   app.get('/', routes.index);
 
   app.get('/upload', routes.upload);
@@ -13,7 +14,7 @@ module.exports = function(app, routes) {
   
   app.get('/movie/tag/:id', routes.movieByTag);
 
-  app.get('/movie/delete/:id', routes.confirmDeleteMovie);
+  app.get('/movie/:id/delete', routes.confirmDeleteMovie);
 
   app.post('/movie/delete', routes.postDeleteMovie);
   

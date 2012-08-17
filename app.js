@@ -15,6 +15,7 @@ var async = require('async')
   , Step = require('step')
   , TrashCollector = require('./movieFile').TrashCollector
   , util = require('util')
+  , url = require('url')
   , _  = require('underscore');
 
 // temp and static file directory locations.

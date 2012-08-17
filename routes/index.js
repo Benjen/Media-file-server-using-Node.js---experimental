@@ -6,6 +6,7 @@
 var mongoose = require('mongoose');
 var fs = require('fs');
 var _ = require('underscore');
+var url = require('url');
 
 /*
  * Error page
@@ -44,7 +45,8 @@ exports.index = function(req, res) {
     res.render('index', {
       locals: {
         title: 'Media Server',
-        movies: docs
+        movies: docs,
+        prev: encodeURI(url.parse(req.url).path)
       },
       status: 200
     });
@@ -56,6 +58,9 @@ exports.index = function(req, res) {
  */
 exports.confirmDeleteMovie = function(req, res) {
   var movieId = req.params.id;
+  // Get url of previous page.
+  var prev = decodeURI(req.query.prev);
+  console.log(prev);
   var Movie = mongoose.model('Movie');
   Movie.findOne({ _id: movieId }, function(err, doc) {
     if (err) {
@@ -66,7 +71,8 @@ exports.confirmDeleteMovie = function(req, res) {
         locals: {
           title: 'Delete ' + doc.name,
           _id: movieId,
-          movietitle: doc.name
+          movietitle: doc.name,
+          prev: prev
         }
       });
     }
@@ -87,20 +93,23 @@ exports.movie = function(req, res) {
         // have a nice little page to tell people something didn't go right. Of 
         // course one would need to consider what kind of information to show, as 
         // it might aid would be hackers. Not something we want.
-//        res.render('error', {
-//          locals: {
-//            title: 'Error',
-//            msg: 'Looks like something went wrong. If this problem happens a lot, then you might want to tell your technical person about it.',
-//            details: err
-//          }
-//        });
+        /*
+        res.render('error', {
+          locals: {
+            title: 'Error',
+            msg: 'Looks like something went wrong. If this problem happens a lot, then you might want to tell your technical person about it.',
+            details: err
+          }
+        });
+        */
       }
       else {
-        console.log(doc);
         res.render('movie', {
           locals: {
             title: 'Watch Movie',
-            movie: doc
+            movie: doc,
+            prev: encodeURI(url.parse(req.url).path)
+//            prev: url.parse(req.url).path
           }
         });
       }
@@ -127,7 +136,8 @@ exports.movieByTag = function(req, res) {
         res.render('movies', {
           locals: {
             title: 'Movies by Tag',
-            movies: docs
+            movies: docs,
+            prev: encodeURI(url.parse(req.url).path)
           }
         });
       }
@@ -140,6 +150,8 @@ exports.movieByTag = function(req, res) {
 exports.postDeleteMovie = function(req, res) {
   // Get path the files directory.
   var filesDir = req.app.settings.FILESDIR;
+  // Get URI of previous page.
+  var prev = req.body.prev;
 
   if (req.body.submit === 'Delete') {
     var Movie = mongoose.model('Movie');
@@ -167,14 +179,14 @@ exports.postDeleteMovie = function(req, res) {
           }
           console.log('*** File deleted. ***');
           // Redirect to front page.
-          res.redirect('/', 302);
+          res.redirect(prev, 302);
         });
       }
     });
   }
   else {
     // Redirect to front page.
-    res.redirect('/', 302);
+    res.redirect(req.body.prevPage, 302);
   }
 };
 

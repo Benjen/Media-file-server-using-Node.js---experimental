@@ -4,6 +4,9 @@ include includes/menu
   .name= movie.name
   .length 2 hrs 30 min
   .views Viewed: 0 times
+  .edit
+    a(href="/movie/#{movie._id}/edit", class="button") Edit
+    a(href="/movie/#{movie._id}/delete?prev=#{prev}", class="button") Delete
   object(classid="clsid:02BF25D5-8C17-4B23-BC80-D3488ABDDC6B", class="video-player", width="400", height="300", codebase="http://www.apple.com/qtactivex/qtplugin.cab")
     //-
       param(name="src" value="http://media:8080/files/#{movie.machineFileName}")

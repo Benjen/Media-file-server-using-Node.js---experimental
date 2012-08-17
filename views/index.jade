@@ -5,7 +5,7 @@ include includes/menu
     - for movie in movies
       li.item
         .delete-movie
-          a(href="/movie/delete/#{movie._id}") X
+          a(href="/movie/#{movie._id}/delete?prev=#{prev}") X
         .title
           = movie.name
         .image

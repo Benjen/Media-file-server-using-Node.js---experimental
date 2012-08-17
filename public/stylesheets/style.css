@@ -4,7 +4,20 @@ body {
 }
 
 a {
-  color: #00B7FF;
+  color: #666666;
+  text-decoration: none;
+}
+
+.button {
+  display: inline-block;
+  border-radius: 4px;
+  background-color: #E5E5EE;
+  border: 1px solid #999999;
+  padding: 2px 10px;
+}
+.button:hover {
+  background-color: #999;
+  color: #ffffff;
 }
 
 #progress-bar {
